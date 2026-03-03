@@ -25,15 +25,24 @@ class RuntimeTierObservation {
   const RuntimeTierObservation({
     this.status = RuntimeTierStatus.inactive,
     this.triggerReason,
+    this.statusDuration = Duration.zero,
+    this.downgradeTriggerCount = 0,
+    this.recoveryTriggerCount = 0,
   });
 
   final RuntimeTierStatus status;
   final String? triggerReason;
+  final Duration statusDuration;
+  final int downgradeTriggerCount;
+  final int recoveryTriggerCount;
 
   Map<String, Object?> toMap() {
     return <String, Object?>{
       'status': status.wireName,
       'triggerReason': triggerReason,
+      'statusDurationMs': statusDuration.inMilliseconds,
+      'downgradeTriggerCount': downgradeTriggerCount,
+      'recoveryTriggerCount': recoveryTriggerCount,
     };
   }
 }

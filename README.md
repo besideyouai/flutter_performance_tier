@@ -37,6 +37,10 @@ await service.initialize();
 final decision = await service.getCurrentDecision();
 
 final runtimeState = decision.runtimeObservation.status.wireName;
+final runtimeStatusDurationMs =
+    decision.runtimeObservation.statusDuration.inMilliseconds;
+final downgradeTriggerCount =
+    decision.runtimeObservation.downgradeTriggerCount;
 final frameDropState = decision.deviceSignals.frameDropState; // normal/moderate/critical
 final frameDropRate = decision.deviceSignals.frameDropRate; // 0.0 ~ 1.0
 ```

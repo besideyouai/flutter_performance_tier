@@ -1,6 +1,6 @@
 # 运行期动态降级策略（M3）
 
-> 更新时间：2026-02-26  
+> 更新时间：2026-03-03  
 > 适用实现：`RuntimeTierController` + `DefaultPerformanceTierService` 当前主干实现
 
 ## 1. 目标
@@ -156,6 +156,9 @@ final service = DefaultPerformanceTierService(
 - `TierDecision.runtimeObservation`（结构化）：
   - `status`：`inactive/pending/active/cooldown/recovery-pending/recovered`
   - `triggerReason`：触发信号摘要（如 `thermalState=serious(level=2)`）
+  - `statusDurationMs`：当前状态已持续时长（毫秒）
+  - `downgradeTriggerCount`：运行期降级触发次数（会话内累计）
+  - `recoveryTriggerCount`：恢复至基线触发次数（会话内累计）
 - `TierDecision.deviceSignals`（新增可观测字段）：
   - `frameDropState` / `frameDropLevel` / `frameDropRate`
   - `frameDroppedCount` / `frameSampledCount`
@@ -183,5 +186,5 @@ final service = DefaultPerformanceTierService(
 
 ## 8. 后续建议
 
-- 增加“状态停留时长 / 触发次数”埋点口径，形成阈值回归基线。
+- 将 `runtimeObservation` 字段接入业务埋点平台，按场景输出阈值回归报表。
 - 在 M4 远程配置阶段，把联调模板参数下沉到可灰度下发配置。
