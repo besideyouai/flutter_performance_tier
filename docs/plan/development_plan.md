@@ -117,11 +117,12 @@ flutter_performance_tier/
       development_plan.md
       real_device_acceptance_checklist.md
     progress/
-      next_steps.md
       initialization_baseline.md
       runtime_dynamic_tiering.md
+    diagnostics_analysis_workflow.md
     rulebook.md
     archived/
+      README.md
       scene_policy_mapping.md
 ```
 
@@ -161,10 +162,24 @@ abstract class PerformanceTierService {
 - 平台字段受系统版本限制：提供字段缺失兜底路径。
 - 过度降级影响体验：分场景策略拆分 + A/B 验证。
 
-## 12. 下一步执行清单（立刻开始）
+## 12. 当前阶段与下一步（2026-03-09）
 
-1. 明确首批接入业务场景（至少 2 个高负载页面）。
-2. 定义 V1 规则表（RAM/机型/系统版本阈值）。
-3. 完成 `TierDecision` 与 `Policy` 数据模型。
-4. 先打通 Android 采集链路，再补齐 iOS 对齐字段。
-5. 完成 demo 页面与结构化日志诊断输出，便于联调验收。
+### 12.1 当前阶段
+
+- 当前阶段定位：`M3` 主链路已完成，进入真机初步验收与工程收口阶段。
+- 当前交付判断：性能分级核心能力、结构化 JSON 输出、运行期动态降级和最小诊断 Demo 已具备。
+- 当前未闭环部分：Android/iOS 真机验收记录、真实鉴权上传闭环、iOS 运行期实测样本。
+
+### 12.2 已完成的关键能力
+
+- 统一服务入口已稳定为 `initialize()`、`getCurrentDecision()`、`watchDecision()`、`refresh()`、`dispose()`。
+- 静态分级、策略映射、运行期信号降级与结构化日志主链路已落地。
+- 默认 `main.dart` 已收敛为最小诊断 Demo，内部上传探针已拆到 `lib/internal_upload_probe_main.dart`。
+- 配置加载失败与信号采集失败已有 fallback decision 兜底，相关测试已补齐。
+
+### 12.3 当前收口动作
+
+1. 按 `docs/plan/real_device_acceptance_checklist.md` 完成 Android / iOS 真机验收，并补完整记录。
+2. 使用真实鉴权参数完成一次 `internal_upload_probe_main.dart` 上传验证，确认 OSS 可查到对应 JSON 对象。
+3. 补齐 iOS 侧运行期状态变化样本，验证降级、冷却和恢复链路。
+4. 如需继续扩展文档，优先更新本文件与 `docs/README.md`，避免再新增重复的状态跟踪文档。

@@ -106,13 +106,6 @@ final service = DefaultPerformanceTierService(
 );
 ```
 
-## 更多文档
+## 文档
 
 - 文档导航：`docs/README.md`
-- 项目规划：`docs/plan/development_plan.md`
-- 当前推进：`docs/progress/next_steps.md`
-- 真机验收清单：`docs/plan/real_device_acceptance_checklist.md`
-- 运行期动态降级：`docs/progress/runtime_dynamic_tiering.md`
-- 规则说明：`docs/rulebook.md`
-- 历史场景策略映射：`docs/archived/scene_policy_mapping.md`
-- 诊断数据分析：`docs/diagnostics_analysis_workflow.md`
