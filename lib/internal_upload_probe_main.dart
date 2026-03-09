@@ -46,12 +46,8 @@ class _PerformanceTierInternalUploadProbePageState
   static const String _uploadTokenFromEnv = String.fromEnvironment(
     'UPLOAD_PROBE_TOKEN',
   );
-  static const String _uploadUsername = String.fromEnvironment(
-    'UPLOAD_PROBE_USERNAME',
-  );
-  static const String _uploadPassword = String.fromEnvironment(
-    'UPLOAD_PROBE_PASSWORD',
-  );
+  static const String _uploadUsername = 'zyyziyunying';
+  static const String _uploadPassword = '123456';
 
   late final PerformanceTierDemoController _controller =
       PerformanceTierDemoController();
