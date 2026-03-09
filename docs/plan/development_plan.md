@@ -175,6 +175,7 @@ abstract class PerformanceTierService {
 - 统一服务入口已稳定为 `initialize()`、`getCurrentDecision()`、`watchDecision()`、`refresh()`、`dispose()`。
 - 静态分级、策略映射、运行期信号降级与结构化日志主链路已落地。
 - 默认 `main.dart` 已收敛为最小诊断 Demo，内部上传探针已拆到 `lib/internal_upload_probe_main.dart`。
+- `internal_upload_probe_main.dart` 的登录态已接入 `packages/common/lib/src/auth`，使用 `CommonAuth.secureStorage(...)` 持久化 session；提供账号密码时，token 过期后会自动重新登录。
 - 配置加载失败与信号采集失败已有 fallback decision 兜底，相关测试已补齐。
 
 ### 12.3 当前收口动作

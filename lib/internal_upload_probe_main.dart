@@ -1,12 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:common/log_upload.dart';
+import 'package:common/common.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import 'demo/performance_tier_demo_controller.dart';
 import 'demo/performance_tier_diagnostics_scaffold.dart';
+import 'internal_upload_probe/upload_probe_auth_service.dart';
 
 void main() {
   runApp(const PerformanceTierInternalUploadProbeApp());
@@ -55,6 +56,18 @@ class _PerformanceTierInternalUploadProbePageState
   late final PerformanceTierDemoController _controller =
       PerformanceTierDemoController();
   late final Dio _dio = Dio();
+  late final UploadProbeAuthConfig _authConfig = UploadProbeAuthConfig(
+    loginUrl: _loginUrl,
+    tokenFromEnv: _uploadTokenFromEnv,
+    username: _uploadUsername,
+    password: _uploadPassword,
+  );
+  late final UploadProbeAuthService _authService =
+      UploadProbeAuthService.secureStorage(
+    config: _authConfig,
+    dio: _dio,
+    logger: _controller.recordDiagnosticLog,
+  );
   late final LogUploadClient _logUploadClient = LogUploadClient(
     uploader: DioLogUploader(dio: _dio),
     defaults: const LogUploadDefaults(
@@ -62,70 +75,33 @@ class _PerformanceTierInternalUploadProbePageState
       fields: <String, String>{'source': 'flutter_performance_tier'},
     ),
   );
+  StreamSubscription<AuthState>? _authStateSubscription;
 
   String? _uploadError;
   String _uploadResult = 'Not run yet.';
-  String? _cachedUploadToken;
   bool _runningUpload = false;
+  bool _clearingSession = false;
+  String _authStatus = AuthStatus.unknown.name;
+  String _authTokenPreview = '-';
+  String _authSubject = '-';
+  String _authExpiresAt = '-';
 
   @override
   void initState() {
     super.initState();
+    _updateAuthStateFields(_authService.currentState);
+    _authStateSubscription = _authService.watchState().listen(_onAuthState);
+    unawaited(_authService.bootstrap());
     unawaited(_controller.start());
   }
 
   @override
   void dispose() {
+    unawaited(_authStateSubscription?.cancel());
+    unawaited(_authService.dispose());
     unawaited(_controller.close());
     _dio.close(force: true);
     super.dispose();
-  }
-
-  Future<String> _resolveUploadToken() async {
-    if (_cachedUploadToken != null && _cachedUploadToken!.isNotEmpty) {
-      return _cachedUploadToken!;
-    }
-    if (_uploadTokenFromEnv.isNotEmpty) {
-      _cachedUploadToken = _uploadTokenFromEnv;
-      return _cachedUploadToken!;
-    }
-    if (_uploadUsername.isEmpty || _uploadPassword.isEmpty) {
-      throw StateError(
-        'Missing upload auth. Set UPLOAD_PROBE_TOKEN or '
-        'UPLOAD_PROBE_USERNAME/UPLOAD_PROBE_PASSWORD via --dart-define.',
-      );
-    }
-
-    final response = await _dio.post<Map<String, dynamic>>(
-      _loginUrl,
-      data: <String, String>{
-        'username': _uploadUsername,
-        'password': _uploadPassword,
-      },
-      options: Options(responseType: ResponseType.json),
-    );
-    final body = response.data;
-    if (body == null) {
-      throw StateError('Login response is empty.');
-    }
-
-    final code = body['code'];
-    if (code is! num || code.toInt() != 200) {
-      throw StateError(
-        'Login failed: code=$code, message=${body['message'] ?? '-'}',
-      );
-    }
-
-    final token = body['data'];
-    if (token is! String || token.isEmpty) {
-      throw StateError('Login succeeded but token is empty.');
-    }
-
-    _cachedUploadToken = token;
-    _controller.recordDiagnosticLog(
-      '[dio_upload_probe] login ok tokenLen=${token.length}',
-    );
-    return token;
   }
 
   Future<void> _runUploadProbe() async {
@@ -139,7 +115,7 @@ class _PerformanceTierInternalUploadProbePageState
     });
 
     try {
-      final token = await _resolveUploadToken();
+      final token = await _authService.resolveAccessToken();
       final now = DateTime.now();
       final fileName = 'performance_tier_report_'
           '${now.toUtc().toIso8601String().replaceAll(':', '').replaceAll('.', '')}.json';
@@ -188,6 +164,41 @@ class _PerformanceTierInternalUploadProbePageState
     }
   }
 
+  Future<void> _clearAuthSession() async {
+    if (_clearingSession) {
+      return;
+    }
+
+    setState(() {
+      _clearingSession = true;
+      _uploadError = null;
+    });
+
+    try {
+      await _authService.clearSession();
+      _controller.recordDiagnosticLog('[upload_probe_auth] session cleared');
+    } catch (error) {
+      setState(() {
+        _uploadError = '$error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _clearingSession = false;
+        });
+      }
+    }
+  }
+
+  void _onAuthState(AuthState state) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _updateAuthStateFields(state);
+    });
+  }
+
   String _formatDioException(DioException error) {
     final statusCode = error.response?.statusCode;
     final responsePreview = _formatResponsePreview(error.response?.data);
@@ -229,8 +240,42 @@ class _PerformanceTierInternalUploadProbePageState
     return '${text.substring(0, 400)}...';
   }
 
+  void _updateAuthStateFields(AuthState state) {
+    _authStatus = state.status.name;
+    _authTokenPreview = _previewToken(state.session?.tokens.accessToken);
+    _authSubject = state.session?.subjectId ?? '-';
+    _authExpiresAt = _formatExpiresAt(state.session?.expiresAt);
+  }
+
+  String _previewToken(String? token) {
+    if (token == null || token.isEmpty) {
+      return '-';
+    }
+    if (token.length <= 24) {
+      return token;
+    }
+    return '${token.substring(0, 24)}...';
+  }
+
+  String _formatExpiresAt(DateTime? value) {
+    if (value == null) {
+      return '-';
+    }
+    return value.toLocal().toIso8601String();
+  }
+
   Map<String, Object?> _buildUploadProbeReport() {
     return <String, Object?>{
+      'auth': <String, Object?>{
+        'status': _authStatus,
+        'subjectId': _authSubject == '-' ? null : _authSubject,
+        'accessTokenPreview': _authTokenPreview,
+        'expiresAt': _authExpiresAt == '-' ? null : _authExpiresAt,
+        'loginUrl': _loginUrl,
+        'hasTokenFromEnv': _uploadTokenFromEnv.isNotEmpty,
+        'hasPasswordCredentials':
+            _uploadUsername.isNotEmpty && _uploadPassword.isNotEmpty,
+      },
       'uploadProbe': <String, Object?>{
         'url': _uploadUrl,
         'client': _logUploadClient.clientLabel,
@@ -278,10 +323,43 @@ class _PerformanceTierInternalUploadProbePageState
                 _runningUpload ? 'Uploading...' : 'Run /upload probe',
               ),
             ),
+            OutlinedButton.icon(
+              onPressed:
+                  _runningUpload || _clearingSession ? null : _clearAuthSession,
+              icon: _clearingSession
+                  ? const SizedBox.square(
+                      dimension: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.logout),
+              label: Text(
+                _clearingSession ? 'Clearing...' : 'Clear auth session',
+              ),
+            ),
           ],
           sectionsBeforeReport: <Widget>[
             Text(
               'Upload endpoint: $_uploadUrl',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              'Login endpoint: $_loginUrl',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              'Auth status: $_authStatus',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              'Auth subject: $_authSubject',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              'Auth expiresAt: $_authExpiresAt',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            Text(
+              'Auth token: $_authTokenPreview',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             if (_uploadError != null)
