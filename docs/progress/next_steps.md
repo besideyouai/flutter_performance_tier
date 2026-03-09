@@ -1,8 +1,8 @@
-# 开发推进与下一步（基于 `DEVELOPMENT_PLAN.md`）
+# 开发推进与下一步（基于 `docs/plan/development_plan.md`）
 
 > 评估时间：2026-03-04  
 > 本次更新：已明确当前交付目标为“结构化 JSON + 经业务服务上传 OSS”，日志平台与报表闭环后置。  
-> 对齐范围：`DEVELOPMENT_PLAN.md` 第 1-159 行
+> 对齐范围：`docs/plan/development_plan.md`
 
 ## 1）已完成
 
@@ -36,7 +36,7 @@
 
 ## 3）下一步准备做（按优先级）
 
-1. **初步真机验收**：按 `docs/real_device_acceptance_checklist.md` 完成 Android/iOS 双端功能验收。
+1. **初步真机验收**：按 `docs/plan/real_device_acceptance_checklist.md` 完成 Android/iOS 双端功能验收。
 2. **问题收敛**：记录验收中发现的问题与结论，保证“功能基本可用”。
 3. **后置项（M4）**：远程配置抽象 + 灰度与回滚策略文档（平台报表能力继续后置，链路固化按需进行）。
 
@@ -44,9 +44,9 @@
 
 - **本次关键改动文件**：
   - `README.md`（新增“当前目标（2026-03）”口径）
-  - `DEVELOPMENT_PLAN.md`（新增当前交付口径、非目标与验收标准）
-  - `NEXT_STEPS.md`（阶段定位与优先级调整为真机初步验收）
+  - `docs/plan/development_plan.md`（新增当前交付口径、非目标与验收标准）
+  - `docs/progress/next_steps.md`（阶段定位与优先级调整为真机初步验收）
   - `docs/runtime_dynamic_tiering.md`（后续建议改为“JSON + OSS 优先”）
-  - `docs/real_device_acceptance_checklist.md`（新增真机初步验收 checklist）
+  - `docs/plan/real_device_acceptance_checklist.md`（新增真机初步验收 checklist）
 - **已验证命令**：本次仅文档更新，未重复执行 `flutter analyze` / `flutter test`。
 - **下次会话建议起手任务**：进入“**按 checklist 进行真机初步验收**”任务。

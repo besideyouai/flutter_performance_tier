@@ -89,6 +89,10 @@ final service = DefaultPerformanceTierService(
 
 ## 更多文档
 
+- 文档导航：`docs/README.md`
+- 项目规划：`docs/plan/development_plan.md`
+- 当前推进：`docs/progress/next_steps.md`
+- 真机验收清单：`docs/plan/real_device_acceptance_checklist.md`
 - 运行期动态降级：`docs/runtime_dynamic_tiering.md`
 - 规则说明：`docs/rulebook.md`
 - 场景策略映射：`docs/scene_policy_mapping.md`

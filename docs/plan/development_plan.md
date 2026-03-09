@@ -111,8 +111,17 @@ flutter_performance_tier/
   android/
   ios/
   docs/
-    architecture.md
+    README.md
+    plan/
+      development_plan.md
+      real_device_acceptance_checklist.md
+    progress/
+      next_steps.md
+      initialization_baseline.md
     rulebook.md
+    runtime_dynamic_tiering.md
+    scene_policy_mapping.md
+    business_integration_sample.md
 ```
 
 ## 8. API 草案
