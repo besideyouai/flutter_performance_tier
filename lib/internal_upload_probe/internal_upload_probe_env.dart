@@ -2,6 +2,16 @@ import 'package:common/env.dart';
 
 part 'internal_upload_probe_env.g.dart';
 
+const String uploadProbeDefaultUploadUrl = 'http://47.110.52.208:7777/upload';
+const String uploadProbeDefaultLoginUrl =
+    'http://47.110.52.208:7777/user/login';
+const String uploadProbeDefaultToken = '';
+const String uploadProbeDefaultUsername = '';
+const String uploadProbeDefaultPassword = '';
+const String uploadProbeDefaultSource = 'flutter_performance_tier';
+const String uploadProbeDefaultAuthSessionKey =
+    'flutter_performance_tier.upload_probe.auth_session_v1';
+
 abstract interface class UploadProbeEnvSource {
   String get uploadUrl;
   String get loginUrl;
@@ -62,32 +72,37 @@ abstract class InternalUploadProbeEnv {
 
   @FieldKey(
     name: 'UPLOAD_PROBE_URL',
-    defaultValue: 'http://47.110.52.208:7777/upload',
+    defaultValue: uploadProbeDefaultUploadUrl,
   )
   String get uploadUrl;
 
   @FieldKey(
     name: 'UPLOAD_PROBE_LOGIN_URL',
-    defaultValue: 'http://47.110.52.208:7777/user/login',
+    defaultValue: uploadProbeDefaultLoginUrl,
   )
   String get loginUrl;
 
-  @FieldKey(name: 'UPLOAD_PROBE_TOKEN', defaultValue: '')
+  @FieldKey(name: 'UPLOAD_PROBE_TOKEN', defaultValue: uploadProbeDefaultToken)
   String get uploadToken;
 
-  @FieldKey(name: 'UPLOAD_PROBE_USERNAME', defaultValue: '')
+  @FieldKey(
+    name: 'UPLOAD_PROBE_USERNAME',
+    defaultValue: uploadProbeDefaultUsername,
+  )
   String get uploadUsername;
 
-  @FieldKey(name: 'UPLOAD_PROBE_PASSWORD', defaultValue: '')
+  @FieldKey(
+    name: 'UPLOAD_PROBE_PASSWORD',
+    defaultValue: uploadProbeDefaultPassword,
+  )
   String get uploadPassword;
 
-  @FieldKey(
-      name: 'UPLOAD_PROBE_SOURCE', defaultValue: 'flutter_performance_tier')
+  @FieldKey(name: 'UPLOAD_PROBE_SOURCE', defaultValue: uploadProbeDefaultSource)
   String get uploadSource;
 
   @FieldKey(
     name: 'UPLOAD_PROBE_AUTH_SESSION_KEY',
-    defaultValue: 'flutter_performance_tier.upload_probe.auth_session_v1',
+    defaultValue: uploadProbeDefaultAuthSessionKey,
   )
   String get authSessionKey;
 }

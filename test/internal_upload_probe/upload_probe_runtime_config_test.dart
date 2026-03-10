@@ -55,6 +55,41 @@ void main() {
       expect(config.authConfig.sessionKey, 'define-session-key');
     });
 
+    test('fromSources falls back when secure env returns null-backed values',
+        () {
+      final config = UploadProbeRuntimeConfig.fromSources(
+        envSource: const _NullCastingUploadProbeEnvSource(),
+      );
+
+      expect(config.uploadUri, Uri.parse(uploadProbeDefaultUploadUrl));
+      expect(config.source, uploadProbeDefaultSource);
+      expect(config.authConfig.loginUrl, uploadProbeDefaultLoginUrl);
+      expect(config.authConfig.tokenFromEnv, uploadProbeDefaultToken);
+      expect(config.authConfig.username, uploadProbeDefaultUsername);
+      expect(config.authConfig.password, uploadProbeDefaultPassword);
+      expect(
+        config.authConfig.sessionKey,
+        uploadProbeDefaultAuthSessionKey,
+      );
+    });
+
+    test('fromSources falls back when secure env omits keys', () {
+      final config = UploadProbeRuntimeConfig.fromSources(
+        envSource: const _MissingKeyUploadProbeEnvSource(),
+      );
+
+      expect(config.uploadUri, Uri.parse(uploadProbeDefaultUploadUrl));
+      expect(config.source, uploadProbeDefaultSource);
+      expect(config.authConfig.loginUrl, uploadProbeDefaultLoginUrl);
+      expect(config.authConfig.tokenFromEnv, uploadProbeDefaultToken);
+      expect(config.authConfig.username, uploadProbeDefaultUsername);
+      expect(config.authConfig.password, uploadProbeDefaultPassword);
+      expect(
+        config.authConfig.sessionKey,
+        uploadProbeDefaultAuthSessionKey,
+      );
+    });
+
     test('fromSources rejects invalid upload uri', () {
       expect(
         () => UploadProbeRuntimeConfig.fromSources(
@@ -106,3 +141,63 @@ class _FakeUploadProbeEnvSource implements UploadProbeEnvSource {
   @override
   final String authSessionKey;
 }
+
+class _NullCastingUploadProbeEnvSource implements UploadProbeEnvSource {
+  const _NullCastingUploadProbeEnvSource();
+
+  @override
+  String get uploadUrl => _throwTypeError();
+
+  @override
+  String get loginUrl => _throwTypeError();
+
+  @override
+  String get uploadToken => _throwTypeError();
+
+  @override
+  String get uploadUsername => _throwTypeError();
+
+  @override
+  String get uploadPassword => _throwTypeError();
+
+  @override
+  String get uploadSource => _throwTypeError();
+
+  @override
+  String get authSessionKey => _throwTypeError();
+}
+
+class _MissingKeyUploadProbeEnvSource implements UploadProbeEnvSource {
+  const _MissingKeyUploadProbeEnvSource();
+
+  @override
+  String get uploadUrl =>
+      throw Exception('Key UPLOAD_PROBE_URL not found in .env file');
+
+  @override
+  String get loginUrl =>
+      throw Exception('Key UPLOAD_PROBE_LOGIN_URL not found in .env file');
+
+  @override
+  String get uploadToken =>
+      throw Exception('Key UPLOAD_PROBE_TOKEN not found in .env file');
+
+  @override
+  String get uploadUsername =>
+      throw Exception('Key UPLOAD_PROBE_USERNAME not found in .env file');
+
+  @override
+  String get uploadPassword =>
+      throw Exception('Key UPLOAD_PROBE_PASSWORD not found in .env file');
+
+  @override
+  String get uploadSource =>
+      throw Exception('Key UPLOAD_PROBE_SOURCE not found in .env file');
+
+  @override
+  String get authSessionKey => throw Exception(
+        'Key UPLOAD_PROBE_AUTH_SESSION_KEY not found in .env file',
+      );
+}
+
+Never _throwTypeError() => throw TypeError();

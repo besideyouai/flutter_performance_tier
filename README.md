@@ -51,17 +51,36 @@
 - `UPLOAD_PROBE_SOURCE`
 - `UPLOAD_PROBE_AUTH_SESSION_KEY`
 
-如需本地 secure env，可从 `.env.internal_upload_probe.example` 复制出 `.env.internal_upload_probe`。
+如需本地 secure env，可直接打开 `.env.internal_upload_probe.example`
+或 `lib/internal_upload_probe/internal_upload_probe_env.dart`，
+然后用 VS Code 插件生成；共享脚本会在缺少 `.env.internal_upload_probe`
+时自动从 example 补齐。
 
-当前仓库已经固定了 `internal_upload_probe_env.dart` 里的 `_encryptionKey` / `_iv`，所以你在修改 `.env.internal_upload_probe` 后，应沿用这两个值重新生成：
+推荐入口已经切到 VS Code 插件：
 
-```bash
-flutter pub run build_runner build \
-  --delete-conflicting-outputs \
-  --define flutter_secure_dotenv_generator:flutter_secure_dotenv=ENCRYPTION_KEY=JxdHpbfQMpnFdghEeyDHKO0zHJz3IkBlE7n5hodXzAo= \
-  --define flutter_secure_dotenv_generator:flutter_secure_dotenv=IV=I9nqIzp5hTpEIr/LRcS4dg== \
-  --define flutter_secure_dotenv_generator:flutter_secure_dotenv=OUTPUT_FILE=encryption_key.json
+- 独立仓库：`D:\dev\vscode-extensions\secure-env-helper`
+- 当前工程配置：`tool/internal_upload_probe_secure_env.json`
+
+在 VS Code 中推荐直接这样用：
+
+1. 打开 `.env.internal_upload_probe.example`
+2. 点击编辑器标题上的 `Secure Env: Generate For Current Project`
+3. 或在资源管理器里右键该文件 / `internal_upload_probe_env.dart` / `tool/internal_upload_probe_secure_env.json` 后生成
+
+命令面板仍可用：
+
+1. `Secure Env: Generate For Current Project`
+2. `Secure Env: Pick Config And Generate`
+
+如果不用插件，再直接调用共享生成器：
+
+```powershell
+pwsh -ExecutionPolicy Bypass -File ..\packages\common\tool\regenerate_secure_env.ps1 `
+  -ProjectRoot . `
+  -ConfigFile tool\internal_upload_probe_secure_env.json
 ```
+
+共享生成器会自动补齐缺失的 `.env.internal_upload_probe`、在首次缺少固定 key/iv 时自动 bootstrap、后续沿用固定 `ENCRYPTION_KEY` / `IV` 重生成 secure env，并删除临时 `encryption_key.json`。
 
 ## 生命周期
 

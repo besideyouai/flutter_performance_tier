@@ -1,0 +1,8 @@
+{
+  "displayName": "internal upload probe secure env",
+  "envFile": ".env.internal_upload_probe",
+  "envExampleFile": ".env.internal_upload_probe.example",
+  "envDartFile": "lib/internal_upload_probe/internal_upload_probe_env.dart",
+  "outputKeyFile": "encryption_key.json",
+  "useFvm": "Auto"
+}

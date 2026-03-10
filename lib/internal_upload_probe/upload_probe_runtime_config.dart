@@ -62,19 +62,31 @@ class UploadProbeRuntimeConfig {
     final source = envSource;
     final uploadUrl = _pickValue(
       defineValue: uploadUrlFromDefine,
-      envValue: source.uploadUrl,
+      envValue: _readEnvValue(
+        read: () => source.uploadUrl,
+        fallback: uploadProbeDefaultUploadUrl,
+      ),
     );
     final loginUrl = _pickValue(
       defineValue: loginUrlFromDefine,
-      envValue: source.loginUrl,
+      envValue: _readEnvValue(
+        read: () => source.loginUrl,
+        fallback: uploadProbeDefaultLoginUrl,
+      ),
     );
     final uploadSource = _pickValue(
       defineValue: uploadSourceFromDefine,
-      envValue: source.uploadSource,
+      envValue: _readEnvValue(
+        read: () => source.uploadSource,
+        fallback: uploadProbeDefaultSource,
+      ),
     );
     final sessionKey = _pickValue(
       defineValue: authSessionKeyFromDefine,
-      envValue: source.authSessionKey,
+      envValue: _readEnvValue(
+        read: () => source.authSessionKey,
+        fallback: uploadProbeDefaultAuthSessionKey,
+      ),
     );
 
     return UploadProbeRuntimeConfig(
@@ -93,15 +105,24 @@ class UploadProbeRuntimeConfig {
         ),
         tokenFromEnv: _pickValue(
           defineValue: uploadTokenFromDefine,
-          envValue: source.uploadToken,
+          envValue: _readEnvValue(
+            read: () => source.uploadToken,
+            fallback: uploadProbeDefaultToken,
+          ),
         ),
         username: _pickValue(
           defineValue: uploadUsernameFromDefine,
-          envValue: source.uploadUsername,
+          envValue: _readEnvValue(
+            read: () => source.uploadUsername,
+            fallback: uploadProbeDefaultUsername,
+          ),
         ),
         password: _pickValue(
           defineValue: uploadPasswordFromDefine,
-          envValue: source.uploadPassword,
+          envValue: _readEnvValue(
+            read: () => source.uploadPassword,
+            fallback: uploadProbeDefaultPassword,
+          ),
         ),
         sessionKey: _requireNonEmpty(
           value: sessionKey,
@@ -130,6 +151,23 @@ class UploadProbeRuntimeConfig {
       return normalized;
     }
     throw StateError('$variableName is required.');
+  }
+
+  static String _readEnvValue({
+    required String Function() read,
+    required String fallback,
+  }) {
+    try {
+      return read();
+    } on TypeError {
+      return fallback;
+    } on Exception catch (error) {
+      final message = error.toString();
+      if (message.contains('not found in .env file')) {
+        return fallback;
+      }
+      rethrow;
+    }
   }
 
   static Uri _parseRequiredUri({
