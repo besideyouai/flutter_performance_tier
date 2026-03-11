@@ -12,6 +12,13 @@
 - 业务侧通过自有上传服务将诊断 JSON 归档到 OSS，形成可追溯最小闭环。
 - 当前阶段不以“统一日志平台接入 / 阈值回归报表看板”作为交付前置条件。
 
+## 当前状态（2026-03-11）
+
+- Android 真机首轮闭环已完成，当前可以视为“初步完善”状态。
+- 已在 Android 真机跑通 `Live device -> Memory critical -> Thermal serious -> Live device`。
+- 运行期降级、冷却、逐级恢复、结构化诊断 JSON 和 `/upload probe` 上传链路均已验证。
+- iOS 侧仍待补真机样本与上传闭环。
+
 ## 开发命令
 
 - `flutter pub get`
@@ -22,21 +29,21 @@
 - `flutter run -t lib/internal_upload_probe_main.dart`
 - `flutter pub run build_runner build --delete-conflicting-outputs --define flutter_secure_dotenv_generator:flutter_secure_dotenv=OUTPUT_FILE=encryption_key.json`
 
-## 结构化日志优先（已移除面板）
+## 结构化日志优先
 
-最新 Demo 已改为“结构化日志输出优先”，不再展示复杂决策面板。  
+最新 Demo 已改为“结构化日志输出优先”，只保留精简的运行时预设和上传辅助面板。  
 核心输出为 `PERF_TIER_LOG` 前缀的 JSON Line，便于直接复制给 AI 排查。
 
 - 运行 `flutter run` 后，在控制台筛选 `PERF_TIER_LOG`
 - App 内可一键复制 `AI Diagnostics JSON`
 - `flutter test` 会输出 `PERF_TIER_TEST_RESULT` JSON 结果
 
-默认 `main.dart` 只保留最小诊断示例。  
-内部上传探针已拆到独立入口：`flutter run -t lib/internal_upload_probe_main.dart`。
+默认 `main.dart` 现在同时提供最小诊断示例和 `Run /upload probe` 上传按钮。  
+`flutter run -t lib/internal_upload_probe_main.dart` 仍保留，便于把上传链路作为独立入口单独验证。
 
-## 内部上传探针配置
+## 上传探针配置
 
-`internal_upload_probe_main.dart` 现在按以下优先级读取配置：
+默认 Demo 和 `internal_upload_probe_main.dart` 按以下优先级读取配置：
 
 1. `--dart-define`
 2. `lib/internal_upload_probe/internal_upload_probe_env.dart` 对应的 secure env

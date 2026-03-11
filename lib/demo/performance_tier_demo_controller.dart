@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'demo_runtime_signal_support.dart';
 import '../performance_tier/performance_tier.dart';
 
 class PerformanceTierDemoController extends ChangeNotifier {
@@ -12,14 +13,16 @@ class PerformanceTierDemoController extends ChangeNotifier {
 
   final PerformanceTierService? _providedService;
   final List<String> _structuredLogs = <String>[];
+  DemoRuntimeSignalPreset _runtimeSignalPreset =
+      DemoRuntimeSignalPreset.liveDevice;
 
   late final JsonLinePerformanceTierLogger _structuredLogger =
       JsonLinePerformanceTierLogger(
     prefix: 'PERF_TIER_LOG',
     emitter: _recordStructuredLog,
   );
-  late final PerformanceTierService _service = _providedService ??
-      DefaultPerformanceTierService(logger: _structuredLogger);
+  late final PerformanceTierService _service =
+      _providedService ?? _buildDefaultService();
 
   StreamSubscription<TierDecision>? _subscription;
   Future<void>? _startInFlight;
@@ -35,6 +38,8 @@ class PerformanceTierDemoController extends ChangeNotifier {
   String? get error => _error;
   bool get initializing => _initializing;
   bool get refreshing => _refreshing;
+  bool get supportsRuntimeSignalPresets => _providedService == null;
+  DemoRuntimeSignalPreset get runtimeSignalPreset => _runtimeSignalPreset;
   List<String> get structuredLogs => List<String>.unmodifiable(_structuredLogs);
 
   Future<void> start() {
@@ -69,6 +74,19 @@ class PerformanceTierDemoController extends ChangeNotifier {
       _refreshing = false;
       _notifySafely();
     }
+  }
+
+  Future<void> selectRuntimeSignalPreset(DemoRuntimeSignalPreset preset) async {
+    if (!supportsRuntimeSignalPresets || _disposed) {
+      return;
+    }
+
+    final changed = _runtimeSignalPreset != preset;
+    _runtimeSignalPreset = preset;
+    if (changed) {
+      _notifySafely();
+    }
+    await refreshDecision();
   }
 
   Future<void> copyAiReport(
@@ -108,6 +126,16 @@ class PerformanceTierDemoController extends ChangeNotifier {
     };
     report.addAll(extraSections);
     return const JsonEncoder.withIndent('  ').convert(report);
+  }
+
+  Map<String, Object?> buildDemoSections() {
+    if (!supportsRuntimeSignalPresets) {
+      return const <String, Object?>{};
+    }
+
+    return <String, Object?>{
+      'demoRuntimeSignalPreset': _runtimeSignalPreset.toMap(),
+    };
   }
 
   String buildHeadline() {
@@ -206,5 +234,23 @@ class PerformanceTierDemoController extends ChangeNotifier {
       return;
     }
     notifyListeners();
+  }
+
+  PerformanceTierService _buildDefaultService() {
+    return DefaultPerformanceTierService(
+      logger: _structuredLogger,
+      signalCollector: DemoRuntimeSignalCollector(
+        baseCollector: MethodChannelDeviceSignalCollector(),
+        presetProvider: () => _runtimeSignalPreset,
+      ),
+      runtimeSignalRefreshInterval: const Duration(seconds: 1),
+      runtimeTierController: RuntimeTierController(
+        config: const RuntimeTierControllerConfig(
+          downgradeDebounce: Duration(seconds: 1),
+          recoveryCooldown: Duration(seconds: 3),
+          upgradeDebounce: Duration(seconds: 1),
+        ),
+      ),
+    );
   }
 }

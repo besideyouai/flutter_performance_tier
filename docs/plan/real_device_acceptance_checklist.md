@@ -1,15 +1,19 @@
 # 真机验收 Checklist（JSON + OSS 目标）
 
-更新时间：2026-03-11
+更新时间：2026-03-11（Android 首轮验收已完成）
 
 适用范围：`flutter_performance_tier` 当前阶段交付目标（结构化 JSON 产出 + 经业务服务上传 OSS）。
 
 ## 1. 准备
 
-- [x] 使用真机（非模拟器）各 1 台：Android / iOS。
-- [x] `flutter run` 启动成功，Demo 页面可见。
-- [x] 如需验证上传链路，使用 `flutter run -t lib/internal_upload_probe_main.dart` 启动内部 probe Demo。
-- [x] 上传鉴权参数可用（secure env 或 `--dart-define` 提供 `UPLOAD_PROBE_TOKEN`，或 `UPLOAD_PROBE_USERNAME` + `UPLOAD_PROBE_PASSWORD`）。
+- [x] Android：已使用真机（Redmi K40 / `M2012K11AC`）完成首轮验收。
+- [ ] iOS：待补真机验收。
+- [x] Android：`flutter run` 启动成功，Demo 页面可见。
+- [ ] iOS：同项未完成。
+- [x] Android：上传鉴权参数可用（secure env 或 `--dart-define` 提供 `UPLOAD_PROBE_TOKEN`，或 `UPLOAD_PROBE_USERNAME` + `UPLOAD_PROBE_PASSWORD`）。
+- [ ] iOS：同项未完成。
+
+注：如需验证上传链路，可直接使用默认 Demo；如需隔离验证，也可使用 `flutter run -t lib/internal_upload_probe_main.dart`。
 
 ## 2. 核心功能（两端都做）
 
@@ -30,20 +34,25 @@
 
 ## 3. 运行期变化验证（两端都做）
 
-- [ ] 触发一次高负载后，`runtimeObservation.status` 有变化（如 `pending/active/...`）。
-- [ ] 恢复到轻负载后，状态可进入恢复链路（如 `cooldown/recovered`）。
-- [ ] 点击刷新按钮后，日志出现 `decision.recompute.completed`。
+- [x] Android：已跑通 `Live device -> Memory critical -> Thermal serious -> Live device`，`runtimeObservation.status` 可见 `pending/active/cooldown/recovery-pending` 变化。
+- [ ] iOS：同项未完成。
+- [x] Android：恢复到 `Live device` 后，状态可进入恢复链路，且能观察到逐级恢复而非瞬时回到基线。
+- [ ] iOS：同项未完成。
+- [x] Android：点击刷新按钮后，日志可见 `decision.recompute.completed`。
+- [ ] iOS：同项未完成。
 
 ## 4. 上传链路（重点）
 
-- [ ] 在内部 probe Demo 中点击 `Run /upload probe` 后上传成功。
-- [ ] 服务端返回成功信息可见。
-- [ ] OSS 上可查到对应 JSON 对象（文件名/时间匹配）。
-- [ ] 上传失败时（断网或鉴权错误）有清晰错误信息，恢复后可再次成功上传。
+- [x] Android：在 Demo 中点击 `Run /upload probe` 后上传成功。
+- [ ] iOS：同项未完成。
+- [x] Android：服务端返回成功信息可见，OSS 上可查到对应 JSON 对象。
+- [ ] iOS：同项未完成。
+- [x] Android：上传失败时（断网或鉴权错误）有清晰错误信息，恢复后可再次成功上传。
+- [ ] iOS：同项未完成。
 
 ## 5. 通过标准
 
-- [ ] Android 全部通过。
+- [x] Android 当前阶段通过（结构化 JSON、运行期变化、上传闭环）。
 - [ ] iOS 全部通过。
 - [ ] 两端至少各完成 1 次“生成 JSON -> 上传 -> OSS 可查”的闭环。
 

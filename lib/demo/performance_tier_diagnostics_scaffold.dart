@@ -52,61 +52,77 @@ class PerformanceTierDiagnosticsScaffold extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              introText,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(headline),
-            if (error != null) ...<Widget>[
-              const SizedBox(height: 8),
-              Text(
-                'Last Error: $error',
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: <Widget>[
-                OutlinedButton.icon(
-                  onPressed: onCopyLatestLogLine,
-                  icon: const Icon(Icons.copy),
-                  label: const Text('Copy latest log'),
-                ),
-                ...controlButtons,
-              ],
-            ),
-            ..._buildSectionsWithSpacing(),
-            const SizedBox(height: 12),
-            Text(
-              'AI Diagnostics JSON',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: Theme.of(context).dividerColor),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: SelectableText(
-                    report,
-                    style: const TextStyle(fontFamily: 'monospace'),
+      body: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final reportHeight =
+              (constraints.maxHeight * 0.45).clamp(240.0, 520.0).toDouble();
+          final minBodyHeight =
+              constraints.maxHeight > 32 ? constraints.maxHeight - 32 : 0.0;
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: minBodyHeight),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    introText,
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
-                ),
+                  const SizedBox(height: 8),
+                  Text(headline),
+                  if (error != null) ...<Widget>[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Last Error: $error',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        onPressed: onCopyLatestLogLine,
+                        icon: const Icon(Icons.copy),
+                        label: const Text('Copy latest log'),
+                      ),
+                      ...controlButtons,
+                    ],
+                  ),
+                  ..._buildSectionsWithSpacing(),
+                  const SizedBox(height: 12),
+                  Text(
+                    'AI Diagnostics JSON',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: reportHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Theme.of(context).dividerColor,
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(12),
+                        child: SelectableText(
+                          report,
+                          style: const TextStyle(fontFamily: 'monospace'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

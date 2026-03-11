@@ -1,6 +1,6 @@
 # 运行期动态降级策略（M3）
 
-> 更新时间：2026-03-03  
+> 更新时间：2026-03-11  
 > 适用实现：`RuntimeTierController` + `DefaultPerformanceTierService` 当前主干实现
 
 ## 1. 目标
@@ -186,6 +186,15 @@ final service = DefaultPerformanceTierService(
 
 ## 8. 后续建议
 
+- Android 真机闭环已经打通，后续优先补齐 iOS 侧同口径样本与上传验证。
+- Android 当前建议继续积累更多机型样本，但不再阻塞当前阶段文档收口与业务接入。
 - 优先将 `runtimeObservation` 与 `deviceSignals` 字段纳入诊断 JSON，并通过业务上传服务归档到 OSS。
 - 业务日志平台接入与阈值回归报表看板属于后续增强项，不作为当前交付前置。
 - 在 M4 远程配置阶段，把联调模板参数下沉到可灰度下发配置。
+
+## 9. Android 真机样本摘要（2026-03-11）
+
+- 验证设备：Redmi K40（`M2012K11AC`，Android 13）。
+- 已按业务顺序跑通 `Live device -> Memory critical -> Thermal serious -> Live device`。
+- 真实样本中可观察到 `inactive -> pending/active -> cooldown -> recovery-pending` 的状态切换，以及 `t2High -> t0Low -> t1Mid` 的恢复过程。
+- 这说明 Android 侧运行期降级、冷却保持、逐级恢复和诊断导出链路已经具备真机可验证性。

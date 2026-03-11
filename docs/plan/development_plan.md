@@ -162,25 +162,26 @@ abstract class PerformanceTierService {
 - 平台字段受系统版本限制：提供字段缺失兜底路径。
 - 过度降级影响体验：分场景策略拆分 + A/B 验证。
 
-## 12. 当前阶段与下一步（2026-03-09）
+## 12. 当前阶段与下一步（2026-03-11）
 
 ### 12.1 当前阶段
 
-- 当前阶段定位：`M3` 主链路已完成，进入真机初步验收与工程收口阶段。
-- 当前交付判断：性能分级核心能力、结构化 JSON 输出、运行期动态降级和最小诊断 Demo 已具备。
-- 当前未闭环部分：Android/iOS 真机验收记录、真实鉴权上传闭环、iOS 运行期实测样本。
+- 当前阶段定位：Android 侧 `M3` 主链路与首轮真机闭环已完成，整体进入 Android 收口 + iOS 补验收阶段。
+- 当前交付判断：Android 方向已经具备初步可交付性，性能分级核心能力、结构化 JSON 输出、运行期动态降级、最小诊断 Demo 和上传探针主链路已跑通。
+- 当前未闭环部分：iOS 真机验收记录、iOS 运行期实测样本、iOS 上传闭环与双端最终一致性回归。
 
 ### 12.2 已完成的关键能力
 
 - 统一服务入口已稳定为 `initialize()`、`getCurrentDecision()`、`watchDecision()`、`refresh()`、`dispose()`。
 - 静态分级、策略映射、运行期信号降级与结构化日志主链路已落地。
-- 默认 `main.dart` 已收敛为最小诊断 Demo，内部上传探针已拆到 `lib/internal_upload_probe_main.dart`。
+- Android 真机已完成一轮 `Live device -> Memory critical -> Thermal serious -> Live device` 验证，运行期状态切换、冷却和逐级恢复链路均已观察到。
+- 默认 `main.dart` 已提供最小诊断 Demo，并内置上传探针按钮；`lib/internal_upload_probe_main.dart` 作为上传链路的独立入口保留。
 - `internal_upload_probe_main.dart` 的登录态已接入 `packages/common/lib/src/auth`，使用 `CommonAuth.secureStorage(...)` 持久化 session；提供账号密码时，token 过期后会自动重新登录。
 - 配置加载失败与信号采集失败已有 fallback decision 兜底，相关测试已补齐。
 
 ### 12.3 当前收口动作
 
-1. 按 `docs/plan/real_device_acceptance_checklist.md` 完成 Android / iOS 真机验收，并补完整记录。
-2. 使用真实鉴权参数完成一次 `internal_upload_probe_main.dart` 上传验证，确认 OSS 可查到对应 JSON 对象。
+1. 按 `docs/plan/real_device_acceptance_checklist.md` 补齐 iOS 真机验收，并补完整记录。
+2. 使用真实鉴权参数完成一次 iOS Demo 上传验证，确认 OSS 可查到对应 JSON 对象；如需隔离验证，可继续使用 `internal_upload_probe_main.dart`。
 3. 补齐 iOS 侧运行期状态变化样本，验证降级、冷却和恢复链路。
-4. 如需继续扩展文档，优先更新本文件与 `docs/README.md`，避免再新增重复的状态跟踪文档。
+4. 继续维护本文件与 `docs/README.md` 作为单一状态口径，避免再新增重复的状态跟踪文档。
