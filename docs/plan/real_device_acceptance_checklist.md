@@ -1,24 +1,32 @@
 # 真机验收 Checklist（JSON + OSS 目标）
 
-更新时间：2026-03-04
+更新时间：2026-03-11
 
 适用范围：`flutter_performance_tier` 当前阶段交付目标（结构化 JSON 产出 + 经业务服务上传 OSS）。
 
 ## 1. 准备
 
-- [ ] 使用真机（非模拟器）各 1 台：Android / iOS。
-- [ ] `flutter run` 启动成功，Demo 页面可见。
-- [ ] 如需验证上传链路，使用 `flutter run -t lib/internal_upload_probe_main.dart` 启动内部 probe Demo。
-- [ ] 上传鉴权参数可用（secure env 或 `--dart-define` 提供 `UPLOAD_PROBE_TOKEN`，或 `UPLOAD_PROBE_USERNAME` + `UPLOAD_PROBE_PASSWORD`）。
+- [x] 使用真机（非模拟器）各 1 台：Android / iOS。
+- [x] `flutter run` 启动成功，Demo 页面可见。
+- [x] 如需验证上传链路，使用 `flutter run -t lib/internal_upload_probe_main.dart` 启动内部 probe Demo。
+- [x] 上传鉴权参数可用（secure env 或 `--dart-define` 提供 `UPLOAD_PROBE_TOKEN`，或 `UPLOAD_PROBE_USERNAME` + `UPLOAD_PROBE_PASSWORD`）。
 
 ## 2. 核心功能（两端都做）
 
-- [ ] 首次进入后能拿到 `TierDecision`（页面 headline 不再是 initializing）。
-- [ ] 控制台能看到 `PERF_TIER_LOG` JSON Line。
-- [ ] `AI Diagnostics JSON` 可复制，且 JSON 结构完整可解析。
-- [ ] JSON 内包含 `runtimeObservation.status`。
-- [ ] JSON 内包含 `runtimeObservation.statusDurationMs`。
-- [ ] JSON 内包含 `runtimeObservation.downgradeTriggerCount` / `runtimeObservation.recoveryTriggerCount`。
+注：当前仅完成 Android 真机（Redmi K40）检查；iOS 尚未完成，以下按平台分别记录。
+
+- [x] Android：首次进入后能拿到 `TierDecision`（页面 headline 不再是 initializing）。
+- [ ] iOS：同项未完成。
+- [x] Android：控制台能看到 `PERF_TIER_LOG` JSON Line。
+- [ ] iOS：同项未完成。
+- [x] Android：`AI Diagnostics JSON` 可复制，且 JSON 结构完整可解析。
+- [ ] iOS：同项未完成。
+- [x] Android：JSON 内包含 `runtimeObservation.status`。
+- [ ] iOS：同项未完成。
+- [x] Android：JSON 内包含 `runtimeObservation.statusDurationMs`。
+- [ ] iOS：同项未完成。
+- [x] Android：JSON 内包含 `runtimeObservation.downgradeTriggerCount` / `runtimeObservation.recoveryTriggerCount`。
+- [ ] iOS：同项未完成。
 
 ## 3. 运行期变化验证（两端都做）
 

@@ -12,7 +12,7 @@
 
 ## 补充参考
 
-- `progress/initialization_baseline.md`：初始化耗时基线与测量口径。
+- `archived/initialization_baseline.md`：初始化耗时基线与测量口径。
 - `rulebook.md`：默认阈值、覆盖优先级与规则链路说明。
 - `diagnostics_analysis_workflow.md`：诊断数据批量分析流程与脚本用法。
 
