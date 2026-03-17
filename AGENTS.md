@@ -14,7 +14,7 @@
 
 ## Build, Test, and Development Commands
 - `flutter pub get` - install or update dependencies from `pubspec.yaml`.
-- `flutter analyze` - run static analysis using project lints.
+- Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
 - `dart format lib test` - format source and test files before commit.
 - `flutter test` - run unit and widget tests.
 - `flutter run` - launch the app locally for manual checks.
@@ -35,7 +35,7 @@
 ## Commit & Pull Request Guidelines
 - Prefer Conventional Commit prefixes, as seen in history (for example, `feat: scaffold performance tier...`).
 - Keep commit messages concise and imperative; split unrelated changes into separate commits.
-- PRs should include purpose, key changes, and validation steps run (`flutter analyze`, `flutter test`).
+- PRs should include purpose, key changes, and validation steps run (`flutter test`, plus any manually deferred `flutter analyze` command if relevant).
 - Link related issues or tasks, and include screenshots or recordings for UI-visible changes.
 
 ## Security & Configuration Tips
