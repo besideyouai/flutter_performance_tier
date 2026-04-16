@@ -5,6 +5,14 @@
 当前状态、下一步和收口事项统一维护在 `plan/development_plan.md`，不再单独拆分日期型的状态页或审查页。
 当前文档口径：Android 真机首轮闭环已完成；iOS 仍待补齐验收。
 
+当前仓库边界：
+
+- 核心库：`lib/performance_tier/`
+- 轻量 public example：`lib/demo/`
+- example 内嵌 `Internal Tools`：runtime preset、structured logs、upload probe
+
+阅读文档时，默认以“真实设备信号路径”为主线；preset 注入和 upload probe 视为 internal tools 语义，不作为主示例默认体验。
+
 ## 优先阅读
 
 - `plan/development_plan.md`：项目目标、当前阶段、Android / iOS 收口状态与下一步。

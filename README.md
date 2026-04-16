@@ -16,8 +16,19 @@
 
 - Android 真机首轮闭环已完成，当前可以视为“初步完善”状态。
 - 已在 Android 真机跑通 `Live device -> Memory critical -> Thermal serious -> Live device`。
-- 运行期降级、冷却、逐级恢复、结构化诊断 JSON 和 `/upload probe` 上传链路均已验证。
+- 运行期降级、冷却、逐级恢复、结构化诊断 JSON 和 internal tools 中的 `/upload probe` 上传链路均已验证。
 - iOS 侧仍待补真机样本与上传闭环。
+
+## 当前边界（2026-04）
+
+仓库现在按三层职责收敛：
+
+- `lib/performance_tier/`：纯核心库，只负责信号采集、Tier 决策、运行期动态调整和策略解析。
+- `lib/demo/`：轻量 public example，默认首页只展示可解释的决策摘要、设备信号和策略结果。
+- `lib/demo/` 内的 `Internal Tools`：仅供联调 / 验收使用，承载 runtime preset、structured logs 和 `/upload probe`。
+
+默认 public example 使用真实设备信号。
+只有展开 `Internal Tools` 并启用 preset 后，才会走 example-only 的运行期信号注入链路。
 
 ## 开发命令
 
@@ -31,19 +42,19 @@
 
 ## 结构化日志优先
 
-最新 Demo 已改为“结构化日志输出优先”，只保留精简的运行时预设和上传辅助面板。  
+最新 example 已改为“public view + internal tools”结构。默认首页只保留轻量诊断视图，运行时预设和上传辅助能力统一放入折叠的 `Internal Tools`。
 核心输出为 `PERF_TIER_LOG` 前缀的 JSON Line，便于直接复制给 AI 排查。
 
 - 运行 `flutter run` 后，在控制台筛选 `PERF_TIER_LOG`
 - App 内可一键复制 `AI Diagnostics JSON`
 - `flutter test` 会输出 `PERF_TIER_TEST_RESULT` JSON 结果
 
-默认 `main.dart` 现在同时提供最小诊断示例和 `Run /upload probe` 上传按钮。  
+默认 `main.dart` 现在提供轻量 public example，并将 runtime preset / structured logs / upload probe 收纳到 `Internal Tools`。
 `flutter run -t lib/internal_upload_probe_main.dart` 仍保留，便于把上传链路作为独立入口单独验证。
 
 ## 上传探针配置
 
-默认 Demo 和 `internal_upload_probe_main.dart` 按以下优先级读取配置：
+example 内的 `Internal Tools` 和 `internal_upload_probe_main.dart` 按以下优先级读取配置：
 
 1. `--dart-define`
 2. `lib/internal_upload_probe/internal_upload_probe_env.dart` 对应的 secure env

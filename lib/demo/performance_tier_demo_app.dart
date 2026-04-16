@@ -3,18 +3,20 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'demo_runtime_signal_support.dart';
+import 'internal_tools_controller.dart';
 import 'performance_tier_demo_controller.dart';
 import 'performance_tier_diagnostics_scaffold.dart';
 import 'performance_tier_upload_probe_controller.dart';
+import '../performance_tier/performance_tier.dart';
 
 class PerformanceTierDemoApp extends StatelessWidget {
   const PerformanceTierDemoApp({
     super.key,
     this.title = 'Performance Tier Diagnostics',
     this.introText =
-        'Structured diagnostics demo. Runtime signal presets and upload probe '
-        'controls are available for local acceptance checks.',
-    this.eagerBootstrapUploadProbe = true,
+        'A lightweight example of the performance tier decision flow. '
+        'Internal tools are available for local acceptance checks.',
+    this.eagerBootstrapUploadProbe = false,
   });
 
   final String title;
@@ -26,9 +28,7 @@ class PerformanceTierDemoApp extends StatelessWidget {
     return MaterialApp(
       title: title,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF0B6E4F),
-        ),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0B6E4F)),
         useMaterial3: true,
       ),
       home: PerformanceTierDemoPage(
@@ -58,27 +58,29 @@ class PerformanceTierDemoPage extends StatefulWidget {
 }
 
 class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
+  late final InternalToolsController _internalToolsController =
+      InternalToolsController();
   late final PerformanceTierDemoController _controller =
-      PerformanceTierDemoController();
-  late final PerformanceTierUploadProbeController _uploadProbeController =
-      PerformanceTierUploadProbeController(
-        logger: _controller.recordDiagnosticLog,
+      PerformanceTierDemoController(
+        internalToolsController: _internalToolsController,
       );
-  late final Listenable _pageListenable =
-      Listenable.merge(<Listenable>[_controller, _uploadProbeController]);
+  late final Listenable _pageListenable = Listenable.merge(<Listenable>[
+    _controller,
+    _internalToolsController,
+  ]);
 
   @override
   void initState() {
     super.initState();
     unawaited(_controller.start());
     if (widget.eagerBootstrapUploadProbe) {
-      unawaited(_uploadProbeController.start());
+      unawaited(_internalToolsController.start());
     }
   }
 
   @override
   void dispose() {
-    unawaited(_uploadProbeController.dispose());
+    unawaited(_internalToolsController.close());
     unawaited(_controller.close());
     super.dispose();
   }
@@ -100,49 +102,22 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
             context,
             extraSections: _buildExtraSections(),
           ),
-          onCopyLatestLogLine: () => _controller.copyLatestLogLine(context),
-          controlButtons: <Widget>[
-            FilledButton.icon(
-              onPressed: _uploadProbeController.runningUpload
-                  ? null
-                  : _runUploadProbe,
-              icon: _uploadProbeController.runningUpload
-                  ? const SizedBox.square(
-                      dimension: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.cloud_upload),
-              label: Text(
-                _uploadProbeController.runningUpload
-                    ? 'Uploading...'
-                    : 'Run /upload probe',
-              ),
-            ),
-            OutlinedButton.icon(
-              onPressed: _uploadProbeController.runningUpload ||
-                      _uploadProbeController.clearingSession
-                  ? null
-                  : _clearAuthSession,
-              icon: _uploadProbeController.clearingSession
-                  ? const SizedBox.square(
-                      dimension: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.logout),
-              label: Text(
-                _uploadProbeController.clearingSession
-                    ? 'Clearing...'
-                    : 'Clear auth session',
-              ),
-            ),
-          ],
           sectionsBeforeReport: <Widget>[
-            if (_controller.supportsRuntimeSignalPresets)
-              _RuntimeSignalPresetPanel(
-                currentPreset: _controller.runtimeSignalPreset,
-                onSelected: _controller.selectRuntimeSignalPreset,
-              ),
-            _UploadProbePanel(controller: _uploadProbeController),
+            _DecisionSummarySection(decision: _controller.decision),
+            _DecisionSignalsSection(decision: _controller.decision),
+            _ResolvedPoliciesSection(decision: _controller.decision),
+            _InternalToolsSection(
+              supportsRuntimeSignalPresets:
+                  _controller.supportsRuntimeSignalPresets,
+              currentPreset: _internalToolsController.runtimeSignalPreset,
+              onSelectedPreset: _onSelectedPreset,
+              uploadProbeController:
+                  _internalToolsController.uploadProbeController,
+              onRunUploadProbe: _runUploadProbe,
+              onClearAuthSession: _internalToolsController.clearAuthSession,
+              onCopyLatestLogLine: () =>
+                  _internalToolsController.copyLatestLogLine(context),
+            ),
           ],
         );
       },
@@ -150,10 +125,7 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
   }
 
   Map<String, Object?> _buildExtraSections() {
-    return <String, Object?>{
-      ..._controller.buildDemoSections(),
-      ..._uploadProbeController.buildReportSections(),
-    };
+    return _internalToolsController.buildReportSections();
   }
 
   String _buildAiReport() {
@@ -161,11 +133,170 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
   }
 
   Future<void> _runUploadProbe() {
-    return _uploadProbeController.runUploadProbe(reportBuilder: _buildAiReport);
+    return _internalToolsController.runUploadProbe(
+      reportBuilder: _buildAiReport,
+    );
   }
 
-  Future<void> _clearAuthSession() {
-    return _uploadProbeController.clearAuthSession();
+  Future<void> _onSelectedPreset(DemoRuntimeSignalPreset preset) async {
+    await _internalToolsController.selectRuntimeSignalPreset(preset);
+    await _controller.syncWithInternalToolsState();
+    await _controller.refreshDecision();
+  }
+}
+
+class _DecisionSummarySection extends StatelessWidget {
+  const _DecisionSummarySection({required this.decision});
+
+  final TierDecision? decision;
+
+  @override
+  Widget build(BuildContext context) {
+    final runtimeObservation = decision?.runtimeObservation;
+    return _InfoSection(
+      title: 'Decision Summary',
+      rows: <String>[
+        'tier=${decision?.tier.name ?? '-'}',
+        'confidence=${decision?.confidence.name ?? '-'}',
+        'runtime=${runtimeObservation?.status.wireName ?? '-'}',
+        'reasons=${decision?.reasons.length ?? 0}',
+      ],
+    );
+  }
+}
+
+class _DecisionSignalsSection extends StatelessWidget {
+  const _DecisionSignalsSection({required this.decision});
+
+  final TierDecision? decision;
+
+  @override
+  Widget build(BuildContext context) {
+    final signals = decision?.deviceSignals;
+    return _InfoSection(
+      title: 'Device Signals',
+      rows: <String>[
+        'platform: ${signals?.platform ?? '-'}',
+        'deviceModel: ${signals?.deviceModel ?? '-'}',
+        'totalRamBytes: ${signals?.totalRamBytes ?? '-'}',
+        'memoryPressureState: ${signals?.memoryPressureState ?? '-'}',
+        'thermalState: ${signals?.thermalState ?? '-'}',
+      ],
+    );
+  }
+}
+
+class _ResolvedPoliciesSection extends StatelessWidget {
+  const _ResolvedPoliciesSection({required this.decision});
+
+  final TierDecision? decision;
+
+  @override
+  Widget build(BuildContext context) {
+    final policies = decision?.appliedPolicies ?? const <String, Object?>{};
+    return _InfoSection(
+      title: 'Resolved Policies',
+      rows: <String>[
+        'animationLevel: ${policies['animationLevel'] ?? '-'}',
+        'mediaPreloadCount: ${policies['mediaPreloadCount'] ?? '-'}',
+        'decodeConcurrency: ${policies['decodeConcurrency'] ?? '-'}',
+        'imageMaxSidePx: ${policies['imageMaxSidePx'] ?? '-'}',
+      ],
+    );
+  }
+}
+
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({required this.title, required this.rows});
+
+  final String title;
+  final List<String> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(title, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            for (final row in rows) ...<Widget>[
+              Text(row, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 4),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InternalToolsSection extends StatelessWidget {
+  const _InternalToolsSection({
+    required this.supportsRuntimeSignalPresets,
+    required this.currentPreset,
+    required this.onSelectedPreset,
+    required this.uploadProbeController,
+    required this.onRunUploadProbe,
+    required this.onClearAuthSession,
+    required this.onCopyLatestLogLine,
+  });
+
+  final bool supportsRuntimeSignalPresets;
+  final DemoRuntimeSignalPreset currentPreset;
+  final Future<void> Function(DemoRuntimeSignalPreset preset) onSelectedPreset;
+  final PerformanceTierUploadProbeController uploadProbeController;
+  final Future<void> Function() onRunUploadProbe;
+  final Future<void> Function() onClearAuthSession;
+  final Future<void> Function() onCopyLatestLogLine;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ExpansionTile(
+        title: const Text('Internal Tools'),
+        subtitle: const Text(
+          'Runtime presets, structured logs, and upload probe helpers for '
+          'internal validation.',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        children: <Widget>[
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: onCopyLatestLogLine,
+              icon: const Icon(Icons.copy),
+              label: const Text('Copy latest log'),
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (supportsRuntimeSignalPresets)
+            _RuntimeSignalPresetPanel(
+              currentPreset: currentPreset,
+              onSelected: onSelectedPreset,
+            ),
+          if (supportsRuntimeSignalPresets) const SizedBox(height: 8),
+          _UploadProbeActions(
+            controller: uploadProbeController,
+            onRunUploadProbe: onRunUploadProbe,
+            onClearAuthSession: onClearAuthSession,
+          ),
+          const SizedBox(height: 8),
+          _UploadProbePanel(controller: uploadProbeController),
+        ],
+      ),
+    );
   }
 }
 
@@ -191,10 +322,7 @@ class _RuntimeSignalPresetPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              'Runtime signal preset',
-              style: theme.textTheme.titleMedium,
-            ),
+            Text('Runtime signal preset', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
               'Acceptance helper: auto-polls every 1s. A pressure preset '
@@ -220,13 +348,58 @@ class _RuntimeSignalPresetPanel extends StatelessWidget {
               }).toList(),
             ),
             const SizedBox(height: 8),
-            Text(
-              currentPreset.summary,
-              style: theme.textTheme.bodySmall,
-            ),
+            Text(currentPreset.summary, style: theme.textTheme.bodySmall),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _UploadProbeActions extends StatelessWidget {
+  const _UploadProbeActions({
+    required this.controller,
+    required this.onRunUploadProbe,
+    required this.onClearAuthSession,
+  });
+
+  final PerformanceTierUploadProbeController controller;
+  final Future<void> Function() onRunUploadProbe;
+  final Future<void> Function() onClearAuthSession;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        FilledButton.icon(
+          onPressed: controller.runningUpload ? null : onRunUploadProbe,
+          icon: controller.runningUpload
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_upload),
+          label: Text(
+            controller.runningUpload ? 'Uploading...' : 'Run /upload probe',
+          ),
+        ),
+        OutlinedButton.icon(
+          onPressed: controller.runningUpload || controller.clearingSession
+              ? null
+              : onClearAuthSession,
+          icon: controller.clearingSession
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.logout),
+          label: Text(
+            controller.clearingSession ? 'Clearing...' : 'Clear auth session',
+          ),
+        ),
+      ],
     );
   }
 }
@@ -250,10 +423,7 @@ class _UploadProbePanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(
-              'Upload probe',
-              style: theme.textTheme.titleMedium,
-            ),
+            Text('Upload probe', style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
             Text(
               'The default demo can upload the current diagnostics JSON '
@@ -305,10 +475,7 @@ class _UploadProbePanel extends StatelessWidget {
               ),
             ],
             const SizedBox(height: 8),
-            Text(
-              'Upload result',
-              style: theme.textTheme.titleSmall,
-            ),
+            Text('Upload result', style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
             SelectableText(
               controller.uploadResult,

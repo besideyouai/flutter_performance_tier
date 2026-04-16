@@ -25,34 +25,30 @@ enum DemoRuntimeSignalPreset {
   }
 
   Map<String, Object?> toMap() {
-    return <String, Object?>{
-      'id': name,
-      'label': label,
-      'summary': summary,
-    };
+    return <String, Object?>{'id': name, 'label': label, 'summary': summary};
   }
 
   DeviceSignals apply(DeviceSignals baseSignals) {
     return switch (this) {
       DemoRuntimeSignalPreset.liveDevice => baseSignals,
       DemoRuntimeSignalPreset.memoryCritical => baseSignals.copyWith(
-          memoryPressureState: 'critical',
-          memoryPressureLevel: 2,
-        ),
+        memoryPressureState: 'critical',
+        memoryPressureLevel: 2,
+      ),
       DemoRuntimeSignalPreset.thermalSerious => baseSignals.copyWith(
-          thermalState: 'serious',
-          thermalStateLevel: 2,
-        ),
+        thermalState: 'serious',
+        thermalStateLevel: 2,
+      ),
     };
   }
 }
 
-class DemoRuntimeSignalCollector implements DeviceSignalCollector {
-  DemoRuntimeSignalCollector({
+class ExampleRuntimeSignalDecorator implements DeviceSignalCollector {
+  ExampleRuntimeSignalDecorator({
     required DeviceSignalCollector baseCollector,
     required DemoRuntimeSignalPreset Function() presetProvider,
-  })  : _baseCollector = baseCollector,
-        _presetProvider = presetProvider;
+  }) : _baseCollector = baseCollector,
+       _presetProvider = presetProvider;
 
   final DeviceSignalCollector _baseCollector;
   final DemoRuntimeSignalPreset Function() _presetProvider;

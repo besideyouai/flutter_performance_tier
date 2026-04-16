@@ -10,7 +10,6 @@ class PerformanceTierDiagnosticsScaffold extends StatelessWidget {
     required this.isRefreshing,
     required this.onRefresh,
     required this.onCopyAiReport,
-    required this.onCopyLatestLogLine,
     this.error,
     this.controlButtons = const <Widget>[],
     this.sectionsBeforeReport = const <Widget>[],
@@ -23,7 +22,6 @@ class PerformanceTierDiagnosticsScaffold extends StatelessWidget {
   final bool isRefreshing;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onCopyAiReport;
-  final Future<void> Function() onCopyLatestLogLine;
   final String? error;
   final List<Widget> controlButtons;
   final List<Widget> sectionsBeforeReport;
@@ -54,10 +52,12 @@ class PerformanceTierDiagnosticsScaffold extends StatelessWidget {
       ),
       body: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final reportHeight =
-              (constraints.maxHeight * 0.45).clamp(240.0, 520.0).toDouble();
-          final minBodyHeight =
-              constraints.maxHeight > 32 ? constraints.maxHeight - 32 : 0.0;
+          final reportHeight = (constraints.maxHeight * 0.45)
+              .clamp(240.0, 520.0)
+              .toDouble();
+          final minBodyHeight = constraints.maxHeight > 32
+              ? constraints.maxHeight - 32
+              : 0.0;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: ConstrainedBox(
@@ -80,19 +80,9 @@ class PerformanceTierDiagnosticsScaffold extends StatelessWidget {
                       ),
                     ),
                   ],
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: <Widget>[
-                      OutlinedButton.icon(
-                        onPressed: onCopyLatestLogLine,
-                        icon: const Icon(Icons.copy),
-                        label: const Text('Copy latest log'),
-                      ),
-                      ...controlButtons,
-                    ],
-                  ),
+                  if (controlButtons.isNotEmpty) const SizedBox(height: 12),
+                  if (controlButtons.isNotEmpty)
+                    Wrap(spacing: 8, runSpacing: 8, children: controlButtons),
                   ..._buildSectionsWithSpacing(),
                   const SizedBox(height: 12),
                   Text(

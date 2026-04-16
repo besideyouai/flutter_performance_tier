@@ -5,7 +5,7 @@ import 'package:flutter_performance_tier/performance_tier/performance_tier.dart'
 
 void main() {
   test('live device preset keeps base signals unchanged', () async {
-    final collector = DemoRuntimeSignalCollector(
+    final collector = ExampleRuntimeSignalDecorator(
       baseCollector: _FakeDeviceSignalCollector(_baseSignals()),
       presetProvider: () => DemoRuntimeSignalPreset.liveDevice,
     );
@@ -16,23 +16,30 @@ void main() {
     expect(signals.memoryPressureLevel, 0);
     expect(signals.thermalState, isNull);
     expect(signals.thermalStateLevel, isNull);
+    expect(signals.platform, 'android');
+    expect(signals.collectedAt, DateTime.utc(2026, 3, 11, 8));
   });
 
-  test('memory critical preset overrides runtime memory signals', () async {
-    final collector = DemoRuntimeSignalCollector(
-      baseCollector: _FakeDeviceSignalCollector(_baseSignals()),
-      presetProvider: () => DemoRuntimeSignalPreset.memoryCritical,
-    );
+  test(
+    'memory critical preset only overrides runtime memory signals',
+    () async {
+      final collector = ExampleRuntimeSignalDecorator(
+        baseCollector: _FakeDeviceSignalCollector(_baseSignals()),
+        presetProvider: () => DemoRuntimeSignalPreset.memoryCritical,
+      );
 
-    final signals = await collector.collect();
+      final signals = await collector.collect();
 
-    expect(signals.memoryPressureState, 'critical');
-    expect(signals.memoryPressureLevel, 2);
-    expect(signals.thermalState, isNull);
-  });
+      expect(signals.memoryPressureState, 'critical');
+      expect(signals.memoryPressureLevel, 2);
+      expect(signals.thermalState, isNull);
+      expect(signals.thermalStateLevel, isNull);
+      expect(signals.platform, 'android');
+    },
+  );
 
-  test('thermal serious preset overrides thermal signals', () async {
-    final collector = DemoRuntimeSignalCollector(
+  test('thermal serious preset only overrides thermal signals', () async {
+    final collector = ExampleRuntimeSignalDecorator(
       baseCollector: _FakeDeviceSignalCollector(_baseSignals()),
       presetProvider: () => DemoRuntimeSignalPreset.thermalSerious,
     );
@@ -42,6 +49,8 @@ void main() {
     expect(signals.thermalState, 'serious');
     expect(signals.thermalStateLevel, 2);
     expect(signals.memoryPressureState, 'normal');
+    expect(signals.memoryPressureLevel, 0);
+    expect(signals.platform, 'android');
   });
 }
 

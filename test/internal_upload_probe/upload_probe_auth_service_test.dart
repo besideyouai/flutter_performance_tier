@@ -14,7 +14,9 @@ void main() {
 
   group('UploadProbeAuthService', () {
     test('resolveAccessToken reuses cached non-expired session', () async {
-      final expiresAt = DateTime.utc(2026, 4, 1, 12);
+      final expiresAt = _truncateToSecond(
+        DateTime.now().toUtc().add(const Duration(days: 30)),
+      );
       final token = _buildJwt(exp: expiresAt);
       final gateway = _FakeUploadProbeLoginGateway();
       final auth = CommonAuth.memory();
@@ -45,7 +47,9 @@ void main() {
 
     test('resolveAccessToken logs in and persists session when missing',
         () async {
-      final expiresAt = DateTime.utc(2026, 5, 1, 8);
+      final expiresAt = _truncateToSecond(
+        DateTime.now().toUtc().add(const Duration(days: 45)),
+      );
       final token = _buildJwt(exp: expiresAt);
       final gateway = _FakeUploadProbeLoginGateway(
         results: <UploadProbeLoginResult>[
@@ -76,9 +80,13 @@ void main() {
 
     test('resolveAccessToken relogs in when cached session is expired',
         () async {
-      final expiredAt = DateTime.utc(2026, 1, 1);
+      final expiredAt = _truncateToSecond(
+        DateTime.now().toUtc().subtract(const Duration(days: 30)),
+      );
       final expiredToken = _buildJwt(exp: expiredAt);
-      final refreshedAt = DateTime.utc(2026, 7, 1, 10);
+      final refreshedAt = _truncateToSecond(
+        DateTime.now().toUtc().add(const Duration(days: 60)),
+      );
       final refreshedToken = _buildJwt(exp: refreshedAt);
       final gateway = _FakeUploadProbeLoginGateway(
         results: <UploadProbeLoginResult>[
@@ -155,4 +163,16 @@ String _buildJwt({required DateTime exp}) {
         'exp': exp.toUtc().millisecondsSinceEpoch ~/ 1000
       })}.'
       'signature';
+}
+
+DateTime _truncateToSecond(DateTime value) {
+  final utc = value.toUtc();
+  return DateTime.utc(
+    utc.year,
+    utc.month,
+    utc.day,
+    utc.hour,
+    utc.minute,
+    utc.second,
+  );
 }

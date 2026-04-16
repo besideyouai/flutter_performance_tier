@@ -4,25 +4,26 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import 'demo_runtime_signal_support.dart';
+import 'example_app_factory.dart';
+import 'internal_tools_controller.dart';
 import '../performance_tier/performance_tier.dart';
 
 class PerformanceTierDemoController extends ChangeNotifier {
-  PerformanceTierDemoController({PerformanceTierService? service})
-      : _providedService = service;
+  PerformanceTierDemoController({
+    PerformanceTierService? service,
+    required InternalToolsController internalToolsController,
+    ExampleAppFactory? exampleAppFactory,
+  }) : _providedService = service,
+       _internalToolsController = internalToolsController,
+       _exampleAppFactory = exampleAppFactory ?? ExampleAppFactory();
 
   final PerformanceTierService? _providedService;
-  final List<String> _structuredLogs = <String>[];
-  DemoRuntimeSignalPreset _runtimeSignalPreset =
-      DemoRuntimeSignalPreset.liveDevice;
+  final InternalToolsController _internalToolsController;
+  final ExampleAppFactory _exampleAppFactory;
 
-  late final JsonLinePerformanceTierLogger _structuredLogger =
-      JsonLinePerformanceTierLogger(
-    prefix: 'PERF_TIER_LOG',
-    emitter: _recordStructuredLog,
-  );
-  late final PerformanceTierService _service =
-      _providedService ?? _buildDefaultService();
+  PerformanceTierService? _ownedService;
+  RuntimeTierController? _ownedRuntimeTierController;
+  bool? _usesPresetDecorator;
 
   StreamSubscription<TierDecision>? _subscription;
   Future<void>? _startInFlight;
@@ -39,8 +40,6 @@ class PerformanceTierDemoController extends ChangeNotifier {
   bool get initializing => _initializing;
   bool get refreshing => _refreshing;
   bool get supportsRuntimeSignalPresets => _providedService == null;
-  DemoRuntimeSignalPreset get runtimeSignalPreset => _runtimeSignalPreset;
-  List<String> get structuredLogs => List<String>.unmodifiable(_structuredLogs);
 
   Future<void> start() {
     if (_disposed || _started) {
@@ -67,7 +66,7 @@ class PerformanceTierDemoController extends ChangeNotifier {
     _refreshing = true;
     _notifySafely();
     try {
-      await _service.refresh();
+      await _currentService.refresh();
     } catch (error) {
       _error = 'Refresh failed: $error';
     } finally {
@@ -76,17 +75,19 @@ class PerformanceTierDemoController extends ChangeNotifier {
     }
   }
 
-  Future<void> selectRuntimeSignalPreset(DemoRuntimeSignalPreset preset) async {
-    if (!supportsRuntimeSignalPresets || _disposed) {
+  Future<void> syncWithInternalToolsState() async {
+    if (_disposed || !supportsRuntimeSignalPresets) {
       return;
     }
 
-    final changed = _runtimeSignalPreset != preset;
-    _runtimeSignalPreset = preset;
-    if (changed) {
-      _notifySafely();
+    final shouldUsePresetDecorator =
+        _internalToolsController.hasActiveRuntimeSignalPreset;
+    if (_ownedService == null ||
+        _usesPresetDecorator == shouldUsePresetDecorator) {
+      return;
     }
-    await refreshDecision();
+
+    await _restartOwnedService(usePresetDecorator: shouldUsePresetDecorator);
   }
 
   Future<void> copyAiReport(
@@ -100,19 +101,6 @@ class PerformanceTierDemoController extends ChangeNotifier {
     );
   }
 
-  Future<void> copyLatestLogLine(BuildContext context) async {
-    final latest = _structuredLogs.isEmpty ? '' : _structuredLogs.first;
-    await _copyToClipboard(
-      context,
-      latest,
-      successMessage: 'Latest log line copied.',
-    );
-  }
-
-  void recordDiagnosticLog(String line) {
-    _recordStructuredLog(line);
-  }
-
   String buildAiReport({
     Map<String, Object?> extraSections = const <String, Object?>{},
   }) {
@@ -122,20 +110,9 @@ class PerformanceTierDemoController extends ChangeNotifier {
       'initializing': _initializing,
       if (_decision != null) 'decision': _decision!.toMap(),
       if (_error != null) 'error': _error,
-      'recentStructuredLogs': _structuredLogs.take(40).toList(),
     };
     report.addAll(extraSections);
     return const JsonEncoder.withIndent('  ').convert(report);
-  }
-
-  Map<String, Object?> buildDemoSections() {
-    if (!supportsRuntimeSignalPresets) {
-      return const <String, Object?>{};
-    }
-
-    return <String, Object?>{
-      'demoRuntimeSignalPreset': _runtimeSignalPreset.toMap(),
-    };
   }
 
   String buildHeadline() {
@@ -160,7 +137,9 @@ class PerformanceTierDemoController extends ChangeNotifier {
     _disposed = true;
     final subscription = _subscription;
     _subscription = null;
-    final disposeFuture = _service.dispose();
+    final disposeFuture = _providedService != null
+        ? _providedService.dispose()
+        : _ownedService?.dispose();
     await subscription?.cancel();
     await disposeFuture;
     super.dispose();
@@ -168,7 +147,7 @@ class PerformanceTierDemoController extends ChangeNotifier {
 
   Future<void> _startSafely() async {
     _started = true;
-    _subscription = _service.watchDecision().listen(
+    _subscription = _currentService.watchDecision().listen(
       _onDecision,
       onError: (Object error, StackTrace stackTrace) {
         if (_disposed) {
@@ -181,7 +160,7 @@ class PerformanceTierDemoController extends ChangeNotifier {
     );
 
     try {
-      await _service.initialize();
+      await _currentService.initialize();
       if (_disposed || _decision != null) {
         return;
       }
@@ -220,15 +199,6 @@ class PerformanceTierDemoController extends ChangeNotifier {
     _notifySafely();
   }
 
-  void _recordStructuredLog(String line) {
-    debugPrint(line);
-    _structuredLogs.insert(0, line);
-    if (_structuredLogs.length > 200) {
-      _structuredLogs.removeRange(200, _structuredLogs.length);
-    }
-    _notifySafely();
-  }
-
   void _notifySafely() {
     if (_disposed) {
       return;
@@ -236,21 +206,67 @@ class PerformanceTierDemoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  PerformanceTierService _buildDefaultService() {
-    return DefaultPerformanceTierService(
-      logger: _structuredLogger,
-      signalCollector: DemoRuntimeSignalCollector(
-        baseCollector: MethodChannelDeviceSignalCollector(),
-        presetProvider: () => _runtimeSignalPreset,
-      ),
-      runtimeSignalRefreshInterval: const Duration(seconds: 1),
-      runtimeTierController: RuntimeTierController(
-        config: const RuntimeTierControllerConfig(
-          downgradeDebounce: Duration(seconds: 1),
-          recoveryCooldown: Duration(seconds: 3),
-          upgradeDebounce: Duration(seconds: 1),
-        ),
-      ),
+  PerformanceTierService get _currentService {
+    return _providedService ??
+        (_ownedService ??= _buildOwnedService(
+          usePresetDecorator:
+              _internalToolsController.hasActiveRuntimeSignalPreset,
+        ));
+  }
+
+  PerformanceTierService _buildOwnedService({
+    required bool usePresetDecorator,
+  }) {
+    _usesPresetDecorator = usePresetDecorator;
+    return _exampleAppFactory.buildService(
+      logEmitter: _internalToolsController.recordStructuredLog,
+      presetProvider: usePresetDecorator
+          ? () => _internalToolsController.runtimeSignalPreset
+          : null,
+      runtimeTierController: _ownedRuntimeTierController ??= _exampleAppFactory
+          .buildRuntimeTierController(),
     );
+  }
+
+  Future<void> _restartOwnedService({required bool usePresetDecorator}) async {
+    final previousSubscription = _subscription;
+    final previousService = _ownedService;
+    _subscription = null;
+    _ownedService = _buildOwnedService(usePresetDecorator: usePresetDecorator);
+    _started = true;
+    _initializing = true;
+    _error = null;
+    _notifySafely();
+
+    await previousSubscription?.cancel();
+    await previousService?.dispose();
+
+    _subscription = _currentService.watchDecision().listen(
+      _onDecision,
+      onError: (Object error, StackTrace stackTrace) {
+        if (_disposed) {
+          return;
+        }
+        _initializing = false;
+        _error = 'watchDecision failed: $error';
+        _notifySafely();
+      },
+    );
+
+    try {
+      await _currentService.initialize();
+      if (_disposed || _decision != null) {
+        return;
+      }
+      _initializing = false;
+      _notifySafely();
+    } catch (error) {
+      if (_disposed) {
+        return;
+      }
+      _initializing = false;
+      _error = 'Initialization failed: $error';
+      _notifySafely();
+    }
   }
 }
