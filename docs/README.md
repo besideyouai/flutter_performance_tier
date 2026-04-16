@@ -1,32 +1,38 @@
 # 文档导航
 
-`docs/` 只保留少量长期维护的文档。
+`docs/` 用于承载 package 自身的内部资料。根目录 `README.md` 只面向外部主工程接入方，不再承担项目进度跟踪、设计讨论或计划沉淀的职责。
 
-当前状态、下一步和收口事项统一维护在 `plan/development_plan.md`，不再单独拆分日期型的状态页或审查页。
-当前文档口径：Android 真机首轮闭环已完成；iOS 仍待补齐验收。
+当前文档按用途收口如下：
 
-当前仓库边界：
-
-- 核心库：`lib/performance_tier/`
-- plugin 平台实现：`android/`、`ios/`
-- 轻量 public example：`example/lib/`
-- example 内嵌 `Internal Tools`：runtime preset、structured logs、upload probe
-
-阅读文档时，默认以“真实设备信号路径”为主线；preset 注入和 upload probe 视为 internal tools 语义，不作为主示例默认体验。
+- `plan/`：当前进度、验收清单、阶段收口资料
+- `plans/`：带日期的执行计划与任务拆解
+- `design/`：设计方案、边界决策与结构调整说明
+- `discussion/`：讨论类文档入口与后续沉淀位置
+- `progress/`：专题进展记录
+- `archived/`：历史资料与已归档文档
 
 ## 优先阅读
 
-- `plan/development_plan.md`：项目目标、当前阶段、Android / iOS 收口状态与下一步。
-- `plan/real_device_acceptance_checklist.md`：真机验收 checklist、当前通过项与记录模板。
-- `progress/runtime_dynamic_tiering.md`：运行期动态降级规则、联调模板、测试说明与 Android 真机样本摘要。
+- `plan/development_plan.md`：当前项目进度、阶段目标与后续收口事项
+- `plan/real_device_acceptance_checklist.md`：真机验收 checklist
+- `progress/runtime_dynamic_tiering.md`：运行期动态分级规则、联调模板与测试说明
 
-## 补充参考
+## 设计与计划
 
-- `archived/initialization_baseline.md`：初始化耗时基线与测量口径。
-- `rulebook.md`：默认阈值、覆盖优先级与规则链路说明。
-- `diagnostics_analysis_workflow.md`：诊断数据批量分析流程与脚本用法。
+- `design/2026-04-16-example-demo-boundary-design.md`：example public view / internal tools 边界设计
+- `design/2026-04-16-package-example-split-design.md`：package 与 example 的职责拆分设计
+- `plans/2026-04-16-example-demo-boundary.md`：example 边界调整执行计划
+- `plans/2026-04-16-package-example-split.md`：package/example 拆分执行计划
+
+## 规则与补充资料
+
+- `rulebook.md`：默认阈值、覆盖优先级与规则链路说明
+- `diagnostics_analysis_workflow.md`：诊断数据批量分析流程与脚本用法
 
 ## 历史资料
 
-- `archived/README.md`：历史文档说明与归档用途。
-- `archived/scene_policy_mapping.md`：首批高负载场景的历史策略映射定义。
+- `archived/README.md`：归档说明
+- `archived/initialization_baseline.md`：初始化耗时基线与测量口径
+- `archived/scene_policy_mapping.md`：历史策略映射定义
+
+新增的进度、计划、讨论、设计类文档请继续放在 `docs/` 对应目录下，避免再回流到根 `README.md`。
