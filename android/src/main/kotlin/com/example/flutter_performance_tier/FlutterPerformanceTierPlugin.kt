@@ -3,16 +3,27 @@ package com.example.flutter_performance_tier
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
-class DeviceSignalChannelHandler(
-    private val context: Context
-) : MethodChannel.MethodCallHandler {
-
+class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     companion object {
         const val channelName: String = "performance_tier/device_signals"
         private const val collectDeviceSignalsMethod: String = "collectDeviceSignals"
+    }
+
+    private lateinit var channel: MethodChannel
+    private lateinit var applicationContext: Context
+
+    override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        applicationContext = binding.applicationContext
+        channel = MethodChannel(binding.binaryMessenger, channelName)
+        channel.setMethodCallHandler(this)
+    }
+
+    override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        channel.setMethodCallHandler(null)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -23,7 +34,8 @@ class DeviceSignalChannelHandler(
     }
 
     private fun collectDeviceSignals(): Map<String, Any?> {
-        val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val activityManager =
+            applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
         val memoryInfo = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(memoryInfo)
         val memoryPressureLevel = resolveMemoryPressureLevel(memoryInfo)

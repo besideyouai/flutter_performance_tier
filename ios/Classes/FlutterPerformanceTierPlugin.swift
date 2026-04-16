@@ -2,28 +2,23 @@ import Flutter
 import UIKit
 import Darwin
 
-@main
-@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
+public class FlutterPerformanceTierPlugin: NSObject, FlutterPlugin {
   private static let deviceSignalsChannelName = "performance_tier/device_signals"
   private static let collectDeviceSignalsMethod = "collectDeviceSignals"
   private static let lowRamThresholdBytes = Int64(3 * 1024 * 1024 * 1024)
   private static let criticalMemoryWarningWindow: TimeInterval = 30
   private static let moderateMemoryWarningWindow: TimeInterval = 120
 
-  private var deviceSignalsChannel: FlutterMethodChannel?
   private var lastMemoryWarningAt: Date?
 
-  override func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
+  public override init() {
+    super.init()
     NotificationCenter.default.addObserver(
       self,
       selector: #selector(handleMemoryWarningNotification(_:)),
       name: UIApplication.didReceiveMemoryWarningNotification,
       object: nil
     )
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   deinit {
@@ -34,21 +29,21 @@ import Darwin
     )
   }
 
-  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
-    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-
+  public static func register(with registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(
       name: Self.deviceSignalsChannelName,
-      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+      binaryMessenger: registrar.messenger()
     )
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard call.method == Self.collectDeviceSignalsMethod else {
-        result(FlutterMethodNotImplemented)
-        return
-      }
-      result(self?.collectDeviceSignals())
+    let instance = FlutterPerformanceTierPlugin()
+    registrar.addMethodCallDelegate(instance, channel: channel)
+  }
+
+  public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == Self.collectDeviceSignalsMethod else {
+      result(FlutterMethodNotImplemented)
+      return
     }
-    deviceSignalsChannel = channel
+    result(collectDeviceSignals())
   }
 
   private func collectDeviceSignals() -> [String: Any] {
