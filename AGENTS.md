@@ -1,8 +1,8 @@
 # Repository Guidelines
 
 ## Scope
-- This file covers `flutter_performance_tier/` only.
-- Workspace-level coordination rules live in `../AGENTS.md`.
+- This file covers `packages/flutter_performance_tier/` only.
+- Workspace-level coordination rules live in `../../AGENTS.md`.
 
 ## Project Structure & Module Organization
 - `lib/performance_tier/` contains the core package, split into `config/`, `engine/`, `model/`, `policy/`, and `service/`.

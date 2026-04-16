@@ -5,9 +5,12 @@ Pod::Spec.new do |s|
   s.description      = <<-DESC
 Reusable Flutter performance tiering package with platform signal collection.
                        DESC
-  s.homepage         = 'http://example.com'
-  s.license          = { :file => '../LICENSE' }
-  s.author           = { 'OpenAI' => 'support@openai.com' }
+  s.homepage         = 'https://github.com/besideyouai/harrypet_flutter'
+  s.license          = {
+    :type => 'Proprietary',
+    :text => 'Private workspace package for harrypet_flutter.',
+  }
+  s.author           = 'besideyouai'
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'
   s.dependency 'Flutter'

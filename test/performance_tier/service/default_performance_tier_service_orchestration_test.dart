@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_performance_tier/performance_tier/performance_tier.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -5,6 +8,23 @@ import 'support/default_performance_tier_service_test_support.dart';
 
 void main() {
   group('DefaultPerformanceTierService orchestration', () {
+    test(
+      'default service initializes on non-mobile flutter_test hosts without plugin mocks',
+      () async {
+        final service = DefaultPerformanceTierService(
+          runtimeSignalRefreshInterval: Duration.zero,
+        );
+        addTearDown(service.dispose);
+
+        await service.initialize();
+        final decision = await service.getCurrentDecision();
+
+        expect(decision.deviceSignals.platform, Platform.operatingSystem);
+        expect(decision.deviceSignals.deviceModel, isNull);
+      },
+      skip: kIsWeb || Platform.isAndroid || Platform.isIOS,
+    );
+
     test('initializes once and appends resolved policy output', () async {
       final collector = SequenceSignalCollector(<DeviceSignals>[
         androidSignals(

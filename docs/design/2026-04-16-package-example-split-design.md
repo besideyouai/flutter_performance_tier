@@ -44,7 +44,7 @@
 ### 目标结构
 
 ```text
-flutter_performance_tier/
+packages/flutter_performance_tier/
   lib/
     flutter_performance_tier.dart
     performance_tier/

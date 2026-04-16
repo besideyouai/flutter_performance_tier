@@ -21,12 +21,14 @@
 
 ## 接入方式
 
-当前 package 设为私有仓库依赖，`pubspec.yaml` 中 `publish_to: 'none'`。主工程通常通过 `path` 或私有 Git 依赖接入。
+当前 package 作为 `harrypet_flutter` workspace 内的私有依赖维护，`pubspec.yaml` 中同时使用了 `publish_to: 'none'` 和 `resolution: workspace`。预期接入方式是当前 workspace 内的主工程、example 或其他成员包复用，不承诺脱离该 workspace 独立解析。
+
+在当前 workspace 中，该包位于 `packages/flutter_performance_tier/`，主工程通常通过 `path` 依赖接入：
 
 ```yaml
 dependencies:
   flutter_performance_tier:
-    path: ../flutter_performance_tier
+    path: ../packages/flutter_performance_tier
 ```
 
 接入后导入：
@@ -132,7 +134,9 @@ final service = DefaultPerformanceTierService(
 ## 平台与边界说明
 
 - 默认原生信号采集仅覆盖 Android / iOS
-- 对于桌面、Web 或特殊宿主环境，需要自行实现 `DeviceSignalCollector`
+- 当前移动端最低平台要求为 Android `minSdk 24`、iOS `13.0`
+- Web、macOS、Windows、Linux、Fuchsia 宿主当前可以安全编译并初始化服务，但默认不会调用原生通道，而是返回一份有限的 fallback `DeviceSignals`
+- 因此，非移动端宿主默认更偏向“可运行 + 可给出保守分级”，如果你们需要更准确的设备分级，请自行实现并注入 `DeviceSignalCollector`
 - plugin 原生通道名为 `performance_tier/device_signals`
 - `example/lib/demo/` 中的 `Internal Tools`、preset 注入和 upload probe 仅用于联调验证，不建议主工程直接照搬
 
@@ -208,6 +212,8 @@ package 默认只在本地内存中使用这些信号做分级和运行期调整
 - `flutter run -t example/lib/main.dart`
 
 `example/lib/main.dart` 展示的是面向接入方的公开示例。内部联调能力仍保留在 `Internal Tools` 和 `example/lib/internal_upload_probe_main.dart`，但它们不再作为这个 README 的主线内容。
+
+当前 `example/` 仍是 workspace 内的演示与联调工程，依赖了 workspace 本地包与内部 upload probe 配置，因此不建议把整个 `example/` 直接当作对外分发模板；如果你只想参考主工程接入方式，请优先看 `example/lib/main.dart`。
 
 ## 文档导航
 

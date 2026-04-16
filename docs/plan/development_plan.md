@@ -98,7 +98,7 @@
 ## 7. 代码结构建议
 
 ```text
-flutter_performance_tier/
+packages/flutter_performance_tier/
   lib/
     performance_tier/
       performance_tier_service.dart
