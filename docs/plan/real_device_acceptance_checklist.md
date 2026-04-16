@@ -8,12 +8,12 @@
 
 - [x] Android：已使用真机（Redmi K40 / `M2012K11AC`）完成首轮验收。
 - [ ] iOS：待补真机验收。
-- [x] Android：`flutter run` 启动成功，Demo 页面可见。
+- [x] Android：`flutter run -t example/lib/main.dart` 启动成功，Demo 页面可见。
 - [ ] iOS：同项未完成。
 - [x] Android：上传鉴权参数可用（secure env 或 `--dart-define` 提供 `UPLOAD_PROBE_TOKEN`，或 `UPLOAD_PROBE_USERNAME` + `UPLOAD_PROBE_PASSWORD`）。
 - [ ] iOS：同项未完成。
 
-注：如需验证上传链路，可直接使用默认 Demo；如需隔离验证，也可使用 `flutter run -t lib/internal_upload_probe_main.dart`。
+注：如需验证上传链路，可直接使用默认 Demo；如需隔离验证，也可使用 `flutter run -t example/lib/internal_upload_probe_main.dart`。
 
 ## 2. 核心功能（两端都做）
 

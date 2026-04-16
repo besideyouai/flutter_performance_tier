@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 import 'example_app_factory.dart';
 import 'internal_tools_controller.dart';
-import '../performance_tier/performance_tier.dart';
+import 'package:flutter_performance_tier/flutter_performance_tier.dart';
 
 class PerformanceTierDemoController extends ChangeNotifier {
   PerformanceTierDemoController({

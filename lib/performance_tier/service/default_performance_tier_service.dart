@@ -27,24 +27,26 @@ class DefaultPerformanceTierService implements PerformanceTierService {
     Duration runtimeSignalRefreshInterval = const Duration(seconds: 15),
     bool enableFrameDropSignal = false,
     PerformanceTierLogger? logger,
-  })  : _signalCollector =
-            signalCollector ?? MethodChannelDeviceSignalCollector(),
-        _engine = engine ?? const RuleBasedTierEngine(),
-        _policyResolver = policyResolver ?? const DefaultPolicyResolver(),
-        _configProvider = configProvider ?? const DefaultConfigProvider(),
-        _runtimeTierController = runtimeTierController ??
-            RuntimeTierController(
-              config: RuntimeTierControllerConfig(
-                enableFrameDropSignal: enableFrameDropSignal,
-              ),
-            ),
-        _frameDropSignalSampler = frameDropSignalSampler ??
-            (enableFrameDropSignal
-                ? SchedulerFrameDropSignalSampler()
-                : const DisabledFrameDropSignalSampler()),
-        _runtimeSignalRefreshInterval = runtimeSignalRefreshInterval,
-        _logger = logger ?? const SilentPerformanceTierLogger(),
-        _sessionId = _buildSessionId();
+  }) : _signalCollector =
+           signalCollector ?? MethodChannelDeviceSignalCollector(),
+       _engine = engine ?? const RuleBasedTierEngine(),
+       _policyResolver = policyResolver ?? const DefaultPolicyResolver(),
+       _configProvider = configProvider ?? const DefaultConfigProvider(),
+       _runtimeTierController =
+           runtimeTierController ??
+           RuntimeTierController(
+             config: RuntimeTierControllerConfig(
+               enableFrameDropSignal: enableFrameDropSignal,
+             ),
+           ),
+       _frameDropSignalSampler =
+           frameDropSignalSampler ??
+           (enableFrameDropSignal
+               ? SchedulerFrameDropSignalSampler()
+               : const DisabledFrameDropSignalSampler()),
+       _runtimeSignalRefreshInterval = runtimeSignalRefreshInterval,
+       _logger = logger ?? const SilentPerformanceTierLogger(),
+       _sessionId = _buildSessionId();
 
   final DeviceSignalCollector _signalCollector;
   final TierEngine _engine;

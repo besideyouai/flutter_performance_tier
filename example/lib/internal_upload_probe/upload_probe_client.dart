@@ -12,10 +12,10 @@ class UploadProbeRunResult {
   });
 
   const UploadProbeRunResult.success(String detail)
-      : this._(success: true, detail: detail);
+    : this._(success: true, detail: detail);
 
   const UploadProbeRunResult.failure(String detail)
-      : this._(success: false, detail: detail, error: detail);
+    : this._(success: false, detail: detail, error: detail);
 
   final bool success;
   final String detail;
@@ -31,11 +31,11 @@ class UploadProbeClient {
     required bool ownsDio,
     this.logger,
     DateTime Function()? nowProvider,
-  })  : _authService = authService,
-        _logUploadClient = logUploadClient,
-        _dio = dio,
-        _ownsDio = ownsDio,
-        _nowProvider = nowProvider ?? DateTime.now;
+  }) : _authService = authService,
+       _logUploadClient = logUploadClient,
+       _dio = dio,
+       _ownsDio = ownsDio,
+       _nowProvider = nowProvider ?? DateTime.now;
 
   factory UploadProbeClient.secureStorage({
     required UploadProbeRuntimeConfig config,
@@ -131,8 +131,11 @@ class UploadProbeClient {
   }
 
   String _buildFileName(DateTime now) {
-    final timestamp =
-        now.toUtc().toIso8601String().replaceAll(':', '').replaceAll('.', '');
+    final timestamp = now
+        .toUtc()
+        .toIso8601String()
+        .replaceAll(':', '')
+        .replaceAll('.', '');
     return 'performance_tier_report_$timestamp.json';
   }
 

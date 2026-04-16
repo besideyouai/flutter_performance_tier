@@ -70,10 +70,7 @@ abstract class InternalUploadProbeEnv {
 
   const InternalUploadProbeEnv._();
 
-  @FieldKey(
-    name: 'UPLOAD_PROBE_URL',
-    defaultValue: uploadProbeDefaultUploadUrl,
-  )
+  @FieldKey(name: 'UPLOAD_PROBE_URL', defaultValue: uploadProbeDefaultUploadUrl)
   String get uploadUrl;
 
   @FieldKey(

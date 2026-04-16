@@ -1,0 +1,25 @@
+name: flutter_performance_tier_example
+description: Example app for flutter_performance_tier.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.0
+
+resolution: workspace
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_performance_tier:
+    path: ..
+  cupertino_icons: ^1.0.8
+  common: ^0.1.0
+  dio: ^5.9.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

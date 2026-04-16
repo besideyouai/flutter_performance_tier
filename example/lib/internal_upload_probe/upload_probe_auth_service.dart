@@ -52,10 +52,8 @@ abstract interface class UploadProbeLoginGateway {
 }
 
 class DioUploadProbeLoginGateway implements UploadProbeLoginGateway {
-  DioUploadProbeLoginGateway({
-    required Dio dio,
-    required this.loginUrl,
-  }) : _dio = dio;
+  DioUploadProbeLoginGateway({required Dio dio, required this.loginUrl})
+    : _dio = dio;
 
   final Dio _dio;
   final String loginUrl;
@@ -67,10 +65,7 @@ class DioUploadProbeLoginGateway implements UploadProbeLoginGateway {
   }) async {
     final response = await _dio.post<Object?>(
       loginUrl,
-      data: <String, String>{
-        'username': username,
-        'password': password,
-      },
+      data: <String, String>{'username': username, 'password': password},
       options: Options(
         responseType: ResponseType.plain,
         validateStatus: (int? status) => status != null,
@@ -156,9 +151,9 @@ class UploadProbeAuthService {
     required UploadProbeAuthConfig config,
     required UploadProbeLoginGateway loginGateway,
     this.logger,
-  })  : _auth = auth,
-        _config = config,
-        _loginGateway = loginGateway;
+  }) : _auth = auth,
+       _config = config,
+       _loginGateway = loginGateway;
 
   factory UploadProbeAuthService.memory({
     required UploadProbeAuthConfig config,
@@ -258,8 +253,9 @@ class UploadProbeAuthService {
       );
     }
 
-    final loginResult =
-        await _loginAndPersist(reason: 'initial password login');
+    final loginResult = await _loginAndPersist(
+      reason: 'initial password login',
+    );
     return loginResult.token;
   }
 

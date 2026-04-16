@@ -6,18 +6,20 @@
 
 ## Project Structure & Module Organization
 - `lib/performance_tier/` contains the core package, split into `config/`, `engine/`, `model/`, `policy/`, and `service/`.
-- `lib/main.dart` is the demo app entry point used for local validation.
-- `android/app/src/main/kotlin/com/example/flutter_performance_tier/` holds native Android channel code (for example, `DeviceSignalChannelHandler.kt`).
-- `ios/Runner/` is the iOS host app scaffold.
-- `test/performance_tier/` covers tiering logic; `test/widget_test.dart` keeps a basic widget smoke test.
+- `lib/flutter_performance_tier.dart` is the package-level barrel export for public consumption.
+- `android/src/main/kotlin/com/example/flutter_performance_tier/` and `ios/Classes/` hold the plugin-side native signal collection implementation.
+- `example/lib/` is the example app, including public demo UI and internal validation tools.
+- `test/performance_tier/` covers tiering logic and platform contract integrity; example-facing widget/demo tests live under `example/test/`.
 - Treat `.dart_tool/` and `build/` as generated output.
 
 ## Build, Test, and Development Commands
 - `flutter pub get` - install or update dependencies from `pubspec.yaml`.
 - Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
-- `dart format lib test` - format source and test files before commit.
-- `flutter test` - run unit and widget tests.
-- `flutter run` - launch the app locally for manual checks.
+- `dart format lib test example/lib example/test` - format source and test files before commit.
+- `flutter test test/performance_tier` - run core package tests.
+- `cd example && flutter test` - run example widget/demo/internal-tools tests.
+- `flutter run -t example/lib/main.dart` - launch the public example app locally.
+- `flutter run -t example/lib/internal_upload_probe_main.dart` - launch the isolated internal upload probe entrypoint.
 - `flutter build apk --release` - build a release APK for packaging checks.
 
 ## Coding Style & Naming Conventions

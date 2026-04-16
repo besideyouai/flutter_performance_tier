@@ -34,9 +34,7 @@ class UploadProbeRuntimeConfig {
   final String source;
   final UploadProbeAuthConfig authConfig;
 
-  factory UploadProbeRuntimeConfig.resolve({
-    UploadProbeEnvSource? envSource,
-  }) {
+  factory UploadProbeRuntimeConfig.resolve({UploadProbeEnvSource? envSource}) {
     return UploadProbeRuntimeConfig.fromSources(
       envSource: envSource ?? SecureUploadProbeEnvSource.create(),
       uploadUrlFromDefine: _uploadUrlFromDefine,

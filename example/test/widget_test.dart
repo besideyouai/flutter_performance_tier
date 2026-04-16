@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_performance_tier/main.dart';
+import 'package:flutter_performance_tier_example/main.dart';
 
 void main() {
   testWidgets(

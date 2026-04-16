@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:flutter_performance_tier/demo/demo_runtime_signal_support.dart';
-import 'package:flutter_performance_tier/demo/example_app_factory.dart';
+import 'package:flutter_performance_tier_example/demo/demo_runtime_signal_support.dart';
+import 'package:flutter_performance_tier_example/demo/example_app_factory.dart';
 import 'package:flutter_performance_tier/performance_tier/performance_tier.dart';
 
 void main() {

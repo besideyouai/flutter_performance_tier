@@ -181,8 +181,8 @@ final service = DefaultPerformanceTierService(
 - `test/performance_tier/service/platform_field_integrity_test.dart`
   - Android / iOS 内存压力字段契约与 Dart 解析完整性
   - `frameDrop*` 字段解析完整性
-- `test/widget_test.dart`
-  - demo 结构化诊断页关键元素冒烟断言
+- `example/test/widget_test.dart`
+  - example 结构化诊断页关键元素冒烟断言
 
 ## 8. 后续建议
 

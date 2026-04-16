@@ -1,5 +1,5 @@
 import 'demo_runtime_signal_support.dart';
-import '../performance_tier/performance_tier.dart';
+import 'package:flutter_performance_tier/flutter_performance_tier.dart';
 
 typedef ExampleBaseCollectorBuilder = DeviceSignalCollector Function();
 typedef ExampleServiceBuilder =

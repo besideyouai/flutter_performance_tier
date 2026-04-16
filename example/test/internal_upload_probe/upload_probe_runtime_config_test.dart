@@ -1,5 +1,5 @@
-import 'package:flutter_performance_tier/internal_upload_probe/internal_upload_probe_env.dart';
-import 'package:flutter_performance_tier/internal_upload_probe/upload_probe_runtime_config.dart';
+import 'package:flutter_performance_tier_example/internal_upload_probe/internal_upload_probe_env.dart';
+import 'package:flutter_performance_tier_example/internal_upload_probe/upload_probe_runtime_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -55,23 +55,22 @@ void main() {
       expect(config.authConfig.sessionKey, 'define-session-key');
     });
 
-    test('fromSources falls back when secure env returns null-backed values',
-        () {
-      final config = UploadProbeRuntimeConfig.fromSources(
-        envSource: const _NullCastingUploadProbeEnvSource(),
-      );
+    test(
+      'fromSources falls back when secure env returns null-backed values',
+      () {
+        final config = UploadProbeRuntimeConfig.fromSources(
+          envSource: const _NullCastingUploadProbeEnvSource(),
+        );
 
-      expect(config.uploadUri, Uri.parse(uploadProbeDefaultUploadUrl));
-      expect(config.source, uploadProbeDefaultSource);
-      expect(config.authConfig.loginUrl, uploadProbeDefaultLoginUrl);
-      expect(config.authConfig.tokenFromEnv, uploadProbeDefaultToken);
-      expect(config.authConfig.username, uploadProbeDefaultUsername);
-      expect(config.authConfig.password, uploadProbeDefaultPassword);
-      expect(
-        config.authConfig.sessionKey,
-        uploadProbeDefaultAuthSessionKey,
-      );
-    });
+        expect(config.uploadUri, Uri.parse(uploadProbeDefaultUploadUrl));
+        expect(config.source, uploadProbeDefaultSource);
+        expect(config.authConfig.loginUrl, uploadProbeDefaultLoginUrl);
+        expect(config.authConfig.tokenFromEnv, uploadProbeDefaultToken);
+        expect(config.authConfig.username, uploadProbeDefaultUsername);
+        expect(config.authConfig.password, uploadProbeDefaultPassword);
+        expect(config.authConfig.sessionKey, uploadProbeDefaultAuthSessionKey);
+      },
+    );
 
     test('fromSources falls back when secure env omits keys', () {
       final config = UploadProbeRuntimeConfig.fromSources(
@@ -84,10 +83,7 @@ void main() {
       expect(config.authConfig.tokenFromEnv, uploadProbeDefaultToken);
       expect(config.authConfig.username, uploadProbeDefaultUsername);
       expect(config.authConfig.password, uploadProbeDefaultPassword);
-      expect(
-        config.authConfig.sessionKey,
-        uploadProbeDefaultAuthSessionKey,
-      );
+      expect(config.authConfig.sessionKey, uploadProbeDefaultAuthSessionKey);
     });
 
     test('fromSources rejects invalid upload uri', () {
@@ -196,8 +192,8 @@ class _MissingKeyUploadProbeEnvSource implements UploadProbeEnvSource {
 
   @override
   String get authSessionKey => throw Exception(
-        'Key UPLOAD_PROBE_AUTH_SESSION_KEY not found in .env file',
-      );
+    'Key UPLOAD_PROBE_AUTH_SESSION_KEY not found in .env file',
+  );
 }
 
 Never _throwTypeError() => throw TypeError();

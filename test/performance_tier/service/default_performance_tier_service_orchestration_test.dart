@@ -15,15 +15,15 @@ void main() {
       ]);
       final configProvider = RecordingConfigProvider(const TierConfig());
       final engine = RecordingTierEngine(
-        decisionFactory: (
-            {required DeviceSignals signals, required TierConfig config}) {
-          return TierDecision(
-            tier: TierLevel.t2High,
-            confidence: TierConfidence.medium,
-            deviceSignals: signals,
-            reasons: const <String>['tier selected by fake engine'],
-          );
-        },
+        decisionFactory:
+            ({required DeviceSignals signals, required TierConfig config}) {
+              return TierDecision(
+                tier: TierLevel.t2High,
+                confidence: TierConfidence.medium,
+                deviceSignals: signals,
+                reasons: const <String>['tier selected by fake engine'],
+              );
+            },
       );
       const policy = PerformancePolicy(
         animationLevel: 2,
@@ -72,18 +72,18 @@ void main() {
         ]);
         final configProvider = RecordingConfigProvider(const TierConfig());
         final engine = RecordingTierEngine(
-          decisionFactory: (
-              {required DeviceSignals signals, required TierConfig config}) {
-            final tier = signals.totalRamBytes == 12 * bytesPerGb
-                ? TierLevel.t3Ultra
-                : TierLevel.t1Mid;
-            return TierDecision(
-              tier: tier,
-              confidence: TierConfidence.medium,
-              deviceSignals: signals,
-              reasons: const <String>['from fake engine'],
-            );
-          },
+          decisionFactory:
+              ({required DeviceSignals signals, required TierConfig config}) {
+                final tier = signals.totalRamBytes == 12 * bytesPerGb
+                    ? TierLevel.t3Ultra
+                    : TierLevel.t1Mid;
+                return TierDecision(
+                  tier: tier,
+                  confidence: TierConfidence.medium,
+                  deviceSignals: signals,
+                  reasons: const <String>['from fake engine'],
+                );
+              },
         );
         final resolver = RecordingPolicyResolver(
           const PerformancePolicy(
@@ -163,14 +163,14 @@ void main() {
         StateError('collector offline'),
       );
       final engine = RecordingTierEngine(
-        decisionFactory: (
-            {required DeviceSignals signals, required TierConfig config}) {
-          return TierDecision(
-            tier: TierLevel.t3Ultra,
-            confidence: TierConfidence.high,
-            deviceSignals: signals,
-          );
-        },
+        decisionFactory:
+            ({required DeviceSignals signals, required TierConfig config}) {
+              return TierDecision(
+                tier: TierLevel.t3Ultra,
+                confidence: TierConfidence.high,
+                deviceSignals: signals,
+              );
+            },
       );
       final resolver = RecordingPolicyResolver(
         const PerformancePolicy(
@@ -217,15 +217,15 @@ void main() {
           const TierConfig(),
         ]);
         final engine = RecordingTierEngine(
-          decisionFactory: (
-              {required DeviceSignals signals, required TierConfig config}) {
-            return TierDecision(
-              tier: TierLevel.t3Ultra,
-              confidence: TierConfidence.high,
-              deviceSignals: signals,
-              reasons: const <String>['from fake engine'],
-            );
-          },
+          decisionFactory:
+              ({required DeviceSignals signals, required TierConfig config}) {
+                return TierDecision(
+                  tier: TierLevel.t3Ultra,
+                  confidence: TierConfidence.high,
+                  deviceSignals: signals,
+                  reasons: const <String>['from fake engine'],
+                );
+              },
         );
         final resolver = RecordingPolicyResolver(
           const PerformancePolicy(

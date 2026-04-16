@@ -7,7 +7,7 @@ import 'internal_tools_controller.dart';
 import 'performance_tier_demo_controller.dart';
 import 'performance_tier_diagnostics_scaffold.dart';
 import 'performance_tier_upload_probe_controller.dart';
-import '../performance_tier/performance_tier.dart';
+import 'package:flutter_performance_tier/flutter_performance_tier.dart';
 
 class PerformanceTierDemoApp extends StatelessWidget {
   const PerformanceTierDemoApp({

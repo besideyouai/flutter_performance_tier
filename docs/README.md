@@ -8,7 +8,8 @@
 当前仓库边界：
 
 - 核心库：`lib/performance_tier/`
-- 轻量 public example：`lib/demo/`
+- plugin 平台实现：`android/`、`ios/`
+- 轻量 public example：`example/lib/`
 - example 内嵌 `Internal Tools`：runtime preset、structured logs、upload probe
 
 阅读文档时，默认以“真实设备信号路径”为主线；preset 注入和 upload probe 视为 internal tools 语义，不作为主示例默认体验。

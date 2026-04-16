@@ -111,8 +111,9 @@ void main() {
 }
 
 const String _androidHandlerPath =
-    'android/app/src/main/kotlin/com/example/flutter_performance_tier/DeviceSignalChannelHandler.kt';
-const String _iosAppDelegatePath = 'ios/Runner/AppDelegate.swift';
+    'android/src/main/kotlin/com/example/flutter_performance_tier/FlutterPerformanceTierPlugin.kt';
+const String _iosAppDelegatePath =
+    'ios/Classes/FlutterPerformanceTierPlugin.swift';
 
 const String _channelName = 'performance_tier/device_signals';
 const String _collectMethod = 'collectDeviceSignals';

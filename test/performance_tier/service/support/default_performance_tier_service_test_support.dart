@@ -4,7 +4,7 @@ const int bytesPerGb = 1024 * 1024 * 1024;
 
 class SequenceSignalCollector implements DeviceSignalCollector {
   SequenceSignalCollector(List<DeviceSignals> signals)
-      : _signals = List<DeviceSignals>.from(signals);
+    : _signals = List<DeviceSignals>.from(signals);
 
   final List<DeviceSignals> _signals;
   int collectCallCount = 0;
@@ -50,7 +50,7 @@ class RecordingConfigProvider implements ConfigProvider {
 
 class SequenceConfigProvider implements ConfigProvider {
   SequenceConfigProvider(List<Object> results)
-      : _results = List<Object>.from(results);
+    : _results = List<Object>.from(results);
 
   final List<Object> _results;
   int loadCallCount = 0;
@@ -88,7 +88,8 @@ class RecordingTierEngine implements TierEngine {
   final TierDecision Function({
     required DeviceSignals signals,
     required TierConfig config,
-  }) decisionFactory;
+  })
+  decisionFactory;
   int evaluateCallCount = 0;
 
   @override
@@ -161,7 +162,7 @@ DeviceSignals androidSignals({
 
 class SequenceFrameDropSignalSampler implements FrameDropSignalSampler {
   SequenceFrameDropSignalSampler(List<FrameDropSignalSnapshot> snapshots)
-      : _snapshots = List<FrameDropSignalSnapshot>.from(snapshots);
+    : _snapshots = List<FrameDropSignalSnapshot>.from(snapshots);
 
   final List<FrameDropSignalSnapshot> _snapshots;
   int startCallCount = 0;
