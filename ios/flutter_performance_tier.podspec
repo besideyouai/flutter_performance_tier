@@ -17,7 +17,8 @@ Reusable Flutter performance tiering package with platform signal collection.
   s.platform         = :ios, '13.0'
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386'
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
+    'PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]' => 'org.cocoapods.flutter-performance-tier'
   }
   s.swift_version = '5.0'
 end
