@@ -25,17 +25,13 @@ class UploadProbeRunResult {
 class UploadProbeClient {
   UploadProbeClient({
     required this.config,
-    required UploadProbeAuthService authService,
-    required LogUploadClient logUploadClient,
-    required Dio dio,
-    required bool ownsDio,
+    required this._authService,
+    required this._logUploadClient,
+    required this._dio,
+    required this._ownsDio,
     this.logger,
     DateTime Function()? nowProvider,
-  }) : _authService = authService,
-       _logUploadClient = logUploadClient,
-       _dio = dio,
-       _ownsDio = ownsDio,
-       _nowProvider = nowProvider ?? DateTime.now;
+  }) : _nowProvider = nowProvider ?? DateTime.now;
 
   factory UploadProbeClient.secureStorage({
     required UploadProbeRuntimeConfig config,

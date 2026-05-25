@@ -92,10 +92,9 @@ void main() {
 
 class _FakePerformanceTierService implements PerformanceTierService {
   _FakePerformanceTierService({
-    required TierDecision initialDecision,
-    required TierDecision refreshedDecision,
-  }) : _initialDecision = initialDecision,
-       _refreshedDecision = refreshedDecision;
+    required this._initialDecision,
+    required this._refreshedDecision,
+  });
 
   final TierDecision _initialDecision;
   final TierDecision _refreshedDecision;

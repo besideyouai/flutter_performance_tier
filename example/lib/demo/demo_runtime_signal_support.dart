@@ -45,10 +45,9 @@ enum DemoRuntimeSignalPreset {
 
 class ExampleRuntimeSignalDecorator implements DeviceSignalCollector {
   ExampleRuntimeSignalDecorator({
-    required DeviceSignalCollector baseCollector,
-    required DemoRuntimeSignalPreset Function() presetProvider,
-  }) : _baseCollector = baseCollector,
-       _presetProvider = presetProvider;
+    required this._baseCollector,
+    required this._presetProvider,
+  });
 
   final DeviceSignalCollector _baseCollector;
   final DemoRuntimeSignalPreset Function() _presetProvider;

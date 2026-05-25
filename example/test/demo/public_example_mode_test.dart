@@ -193,10 +193,9 @@ class _SpyUploadProbeController extends PerformanceTierUploadProbeController {
 class _RuntimeAwareFakePerformanceTierService
     implements PerformanceTierService {
   _RuntimeAwareFakePerformanceTierService({
-    required DeviceSignalCollector signalCollector,
-    required RuntimeTierController runtimeTierController,
-  }) : _signalCollector = signalCollector,
-       _runtimeTierController = runtimeTierController;
+    required this._signalCollector,
+    required this._runtimeTierController,
+  });
 
   final DeviceSignalCollector _signalCollector;
   final RuntimeTierController _runtimeTierController;

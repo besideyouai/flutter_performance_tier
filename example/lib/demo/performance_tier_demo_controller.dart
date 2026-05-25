@@ -11,10 +11,9 @@ import 'package:flutter_performance_tier/flutter_performance_tier.dart';
 class PerformanceTierDemoController extends ChangeNotifier {
   PerformanceTierDemoController({
     PerformanceTierService? service,
-    required InternalToolsController internalToolsController,
+    required this._internalToolsController,
     ExampleAppFactory? exampleAppFactory,
   }) : _providedService = service,
-       _internalToolsController = internalToolsController,
        _exampleAppFactory = exampleAppFactory ?? ExampleAppFactory();
 
   final PerformanceTierService? _providedService;

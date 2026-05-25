@@ -52,8 +52,7 @@ abstract interface class UploadProbeLoginGateway {
 }
 
 class DioUploadProbeLoginGateway implements UploadProbeLoginGateway {
-  DioUploadProbeLoginGateway({required Dio dio, required this.loginUrl})
-    : _dio = dio;
+  DioUploadProbeLoginGateway({required this._dio, required this.loginUrl});
 
   final Dio _dio;
   final String loginUrl;
@@ -117,11 +116,11 @@ class DioUploadProbeLoginGateway implements UploadProbeLoginGateway {
 
 class UploadProbePasswordLoginRefresher implements AuthTokenRefresher {
   UploadProbePasswordLoginRefresher({
-    required UploadProbeLoginGateway loginGateway,
+    required this._loginGateway,
     required this.username,
     required this.password,
     this.onTrace,
-  }) : _loginGateway = loginGateway;
+  });
 
   final UploadProbeLoginGateway _loginGateway;
   final String username;
@@ -147,13 +146,11 @@ class UploadProbePasswordLoginRefresher implements AuthTokenRefresher {
 
 class UploadProbeAuthService {
   UploadProbeAuthService({
-    required CommonAuth auth,
-    required UploadProbeAuthConfig config,
-    required UploadProbeLoginGateway loginGateway,
+    required this._auth,
+    required this._config,
+    required this._loginGateway,
     this.logger,
-  }) : _auth = auth,
-       _config = config,
-       _loginGateway = loginGateway;
+  });
 
   factory UploadProbeAuthService.memory({
     required UploadProbeAuthConfig config,

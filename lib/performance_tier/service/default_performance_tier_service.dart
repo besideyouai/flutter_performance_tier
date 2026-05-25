@@ -24,7 +24,7 @@ class DefaultPerformanceTierService implements PerformanceTierService {
     ConfigProvider? configProvider,
     RuntimeTierController? runtimeTierController,
     FrameDropSignalSampler? frameDropSignalSampler,
-    Duration runtimeSignalRefreshInterval = const Duration(seconds: 15),
+    this._runtimeSignalRefreshInterval = const Duration(seconds: 15),
     bool enableFrameDropSignal = false,
     PerformanceTierLogger? logger,
   }) : _signalCollector =
@@ -44,7 +44,6 @@ class DefaultPerformanceTierService implements PerformanceTierService {
            (enableFrameDropSignal
                ? SchedulerFrameDropSignalSampler()
                : const DisabledFrameDropSignalSampler()),
-       _runtimeSignalRefreshInterval = runtimeSignalRefreshInterval,
        _logger = logger ?? const SilentPerformanceTierLogger(),
        _sessionId = _buildSessionId();
 

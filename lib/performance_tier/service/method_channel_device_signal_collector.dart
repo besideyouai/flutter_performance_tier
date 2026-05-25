@@ -7,12 +7,10 @@ import 'host_platform_resolver.dart';
 
 class MethodChannelDeviceSignalCollector implements DeviceSignalCollector {
   MethodChannelDeviceSignalCollector({
-    MethodChannel methodChannel = const MethodChannel(_channelName),
-    bool isWeb = kIsWeb,
-    TargetPlatform? targetPlatform,
-  }) : _methodChannel = methodChannel,
-       _isWeb = isWeb,
-       _targetPlatform = targetPlatform;
+    this._methodChannel = const MethodChannel(_channelName),
+    this._isWeb = kIsWeb,
+    this._targetPlatform,
+  });
 
   static const String _channelName = 'performance_tier/device_signals';
   static const String _collectMethod = 'collectDeviceSignals';

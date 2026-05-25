@@ -14,11 +14,10 @@ typedef UploadProbeClientFactory =
 
 class PerformanceTierUploadProbeController extends ChangeNotifier {
   PerformanceTierUploadProbeController({
-    required void Function(String line) logger,
+    required this._logger,
     UploadProbeRuntimeConfig Function()? configResolver,
     UploadProbeClientFactory? clientFactory,
-  }) : _logger = logger,
-       _configResolver = configResolver ?? UploadProbeRuntimeConfig.resolve,
+  }) : _configResolver = configResolver ?? UploadProbeRuntimeConfig.resolve,
        _clientFactory =
            clientFactory ??
            ((
