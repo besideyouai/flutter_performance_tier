@@ -21,14 +21,15 @@
 - Treat `.dart_tool/` and `build/` as generated output.
 
 ## Build, Test, and Development Commands
-- `flutter pub get` - install or update dependencies from `pubspec.yaml`.
+- Run dependency resolution from the workspace root when working in this workspace: `cd ../.. && flutter pub get`.
 - Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
 - `dart format lib test example/lib example/test` - format source and test files before commit.
 - `flutter test test/performance_tier` - run core package tests.
 - `cd example && flutter test` - run example widget/demo/internal-tools tests.
-- `flutter run -t example/lib/main.dart` - launch the public example app locally.
-- `flutter run -t example/lib/internal_upload_probe_main.dart` - launch the isolated internal upload probe entrypoint.
-- `flutter build apk --release` - build a release APK for packaging checks.
+- Human-only: `flutter run -t example/lib/main.dart` launches the public example app locally.
+- Human-only: `flutter run -t example/lib/internal_upload_probe_main.dart` launches the isolated internal upload probe entrypoint.
+- Human-only: `flutter build apk --release` builds a release APK for packaging checks.
+- Agents must not run the human-only build, run, simulator, or device commands; hand them off when manual validation is needed.
 
 ## Coding Style & Naming Conventions
 - Follow `analysis_options.yaml` (`package:flutter_lints/flutter.yaml`).
