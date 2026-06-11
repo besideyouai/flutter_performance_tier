@@ -1,12 +1,14 @@
 # Flutter Performance Tier 项目开发计划
 
+> 状态说明（2026-06-11）：本文件保留为历史阶段计划与背景资料，不再拥有当前项目状态。当前项目已调整为 Android-first 性能监测与设备侧报告拉取闭环，允许 breaking changes；事实源见 `../../SPEC.md`，验证口径见 `../../TEST.md`。
+
 ## 1. 项目目标
 
 - 建立一个可复用的 Flutter 性能分级能力，面向 Android 与 iOS 双端。
 - 在应用启动阶段快速给出设备性能等级（Tier），并输出可直接用于业务降级的策略集。
 - 提供运行期信号监听（内存压力、温度/功耗信号、帧率波动）能力，支持动态降级。
 - 支持本地默认策略 + 远程配置覆盖，做到可运营、可灰度、可回滚。
-- 当前交付口径（2026-03）：优先保证结构化 `TierDecision` / `PERF_TIER_LOG` JSON 可稳定产出，并可由业务方通过自有服务上传 OSS；日志平台深度接入与报表闭环后置。
+- 当时交付口径（2026-03）：优先保证结构化 `TierDecision` / `PERF_TIER_LOG` JSON 可稳定产出，并可由业务方通过自有服务上传 OSS；日志平台深度接入与报表闭环后置。
 
 ## 2. 范围与非目标
 
@@ -162,26 +164,12 @@ abstract class PerformanceTierService {
 - 平台字段受系统版本限制：提供字段缺失兜底路径。
 - 过度降级影响体验：分场景策略拆分 + A/B 验证。
 
-## 12. 当前阶段与下一步（2026-03-11）
+## 12. 当前状态口径（2026-06-11）
 
-### 12.1 当前阶段
+本文件不再维护“当前阶段与下一步”。后续状态按以下事实源收口：
 
-- 当前阶段定位：Android 侧 `M3` 主链路与首轮真机闭环已完成，整体进入 Android 收口 + iOS 补验收阶段。
-- 当前交付判断：Android 方向已经具备初步可交付性，性能分级核心能力、结构化 JSON 输出、运行期动态降级、最小诊断 Demo 和上传探针主链路已跑通。
-- 当前未闭环部分：iOS 真机验收记录、iOS 运行期实测样本、iOS 上传闭环与双端最终一致性回归。
+1. 当前项目方向、目标、非目标、breaking change 姿态：`../../SPEC.md`
+2. 当前测试范围、真机报告拉取证据、adb / `@test-android-apps` 验证边界：`../../TEST.md`
+3. 本地 setup、human-only 命令和 secrets：`../../LOCAL.md`
 
-### 12.2 已完成的关键能力
-
-- 统一服务入口已稳定为 `initialize()`、`getCurrentDecision()`、`watchDecision()`、`refresh()`、`dispose()`。
-- 静态分级、策略映射、运行期信号降级与结构化日志主链路已落地。
-- Android 真机已完成一轮 `Live device -> Memory critical -> Thermal serious -> Live device` 验证，运行期状态切换、冷却和逐级恢复链路均已观察到。
-- `example/lib/main.dart` 已提供最小诊断 Demo，并内置上传探针按钮；`example/lib/internal_upload_probe_main.dart` 作为上传链路的独立入口保留。
-- `example/lib/internal_upload_probe_main.dart` 的登录态已接入 `packages/common/lib/src/auth`，使用 `CommonAuth.secureStorage(...)` 持久化 session；提供账号密码时，token 过期后会自动重新登录。
-- 配置加载失败与信号采集失败已有 fallback decision 兜底，相关测试已补齐。
-
-### 12.3 当前收口动作
-
-1. 按 `docs/plan/real_device_acceptance_checklist.md` 补齐 iOS 真机验收，并补完整记录。
-2. 使用真实鉴权参数完成一次 iOS Demo 上传验证，确认 OSS 可查到对应 JSON 对象；如需隔离验证，可继续使用 `example/lib/internal_upload_probe_main.dart`。
-3. 补齐 iOS 侧运行期状态变化样本，验证降级、冷却和恢复链路。
-4. 继续维护本文件与 `docs/README.md` 作为单一状态口径，避免再新增重复的状态跟踪文档。
+旧的 JSON + OSS upload probe 闭环可以作为历史背景或对照工具，但不再是 Android 性能监测重构阶段的主验收目标。

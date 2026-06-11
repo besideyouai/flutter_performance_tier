@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Android 性能报告拉取骨架</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #5f6b7a;
+      --line: #d9e1ec;
+      --accent: #255f85;
+      --accent-soft: #e8f3f8;
+    }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.62;
+    }
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 48px 24px 72px;
+    }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 34px;
+      line-height: 1.18;
+      letter-spacing: 0;
+    }
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 22px;
+      letter-spacing: 0;
+    }
+    p, li {
+      font-size: 16px;
+    }
+    ul {
+      padding-left: 22px;
+    }
+    .goal-line {
+      margin: 0 0 18px;
+      padding: 16px 18px;
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      font-size: 18px;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin: 20px 0 30px;
+    }
+    .meta div, section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+    }
+    .label {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
+    a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Android 性能报告拉取骨架</h1>
+    <p class="goal-line"><strong>一句话目标：</strong>为 flutter_performance_tier 建立 Android 设备侧性能报告生成与主机拉取的最小可验证架构骨架。</p>
+
+    <div class="meta" aria-label="Goal metadata">
+      <div><span class="label">状态</span>active</div>
+      <div><span class="label">创建日期</span>2026-06-11</div>
+    </div>
+
+    <section>
+      <h2>当前状态</h2>
+      <p>active：Android-first 性能报告最小闭环骨架已完成本地实现和非设备测试验证。由于项目规则禁止 Codex 执行 adb、设备运行和 `@test-android-apps` 采集，本目标仍保持 active，等待用户侧真机生成报告并通过 adb 或 `@test-android-apps` 拉取验证。</p>
+    </section>
+
+    <section>
+      <h2>Research 摘要</h2>
+      <ul>
+        <li>事实：项目事实源 `SPEC.md` 已将当前方向定义为 Android-first 性能监测重构，目标是设备侧生成结构化报告，并可通过 direct adb 或 `@test-android-apps` 拉到电脑。</li>
+        <li>事实：`TEST.md` 允许 report schema、parser、storage design 和非设备测试等前置改造先用自动化证据落地；只有声明 Android report loop ready / publishable / consumable 时才必须提供真机拉取证据。</li>
+        <li>事实：现有 `TierDecision.toMap()` 已包含 `tier`、`confidence`、`deviceSignals`、`runtimeObservation`、`reasons`、`appliedPolicies`，可作为 V1 性能报告主体。</li>
+        <li>事实：现有 Android plugin 使用 `performance_tier/device_signals` MethodChannel 和 `collectDeviceSignals` 方法采集 Android 信号；本轮可在同一 channel 上增加 report 写入/列出方法，避免先引入第二条 native 通道。</li>
+        <li>约束：Codex 不运行 `flutter build`、`flutter run`、Gradle build、adb、模拟器、设备或 `@test-android-apps` 采集命令；验证以 Dart/Flutter 非设备测试和文本契约检查为主，真机拉取证据延期给用户。</li>
+        <li>未知：真实 Android 设备上的 `run-as` 可用性、文件 owner、OEM 行为和 `@test-android-apps` 实际采集流程需用户侧验证。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Design 决策</h2>
+      <ul>
+        <li>新增 V1 `PerformanceReport` Dart model，包含 schema 名称、schema version、report id、生成时间、source、`TierDecision` 和 metadata。report schema version 独立于 package version，默认服务生成的 report id 带 service session 与递增 sequence。</li>
+        <li>新增 report store 边界：Dart service 负责组装 report，native Android 负责写入 app-private `files/performance_tier_reports/` 目录并列出报告文件；native 写入遇到同名文件时选择下一个可用文件名，避免覆盖旧报告。</li>
+        <li>BREAKING CHANGE：扩展 `PerformanceTierService`，增加写入当前报告和列出本地报告的入口；外部自定义实现类需要补齐 `writeCurrentReport` 和 `listPerformanceReports`，默认实现保持旧初始化/刷新/监听能力。</li>
+        <li>Android 文件写入使用 app-private storage，不申请外部存储权限；host 拉取通过 `adb shell run-as &lt;applicationId&gt; ls files/performance_tier_reports` 和 `adb exec-out run-as &lt;applicationId&gt; cat files/performance_tier_reports/&lt;fileName&gt;`。</li>
+        <li>当前 rejected option：不把 OSS upload probe 作为主线，不直接做云上传；不在第一刀引入外部可读目录，避免权限和隐私复杂度提前扩大。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Check 验收标准</h2>
+      <ul>
+        <li>Dart report model 能稳定生成 JSON，包含 schema version、report id、生成时间、source、decision、metadata，并有单测覆盖。</li>
+        <li>`DefaultPerformanceTierService` 能在已初始化或未初始化时生成并写入当前 report，连续写入不会复用 report id / file name，返回文件名、相对路径、字节数等 write result，并有非设备单测覆盖。</li>
+        <li>Android plugin 暴露 `writePerformanceReport` 和 `listPerformanceReports` 方法，写入 app-private `files/performance_tier_reports/`，避免覆盖同名报告，并通过平台字段完整性测试检查方法名和目录契约。</li>
+        <li>Dart MethodChannel 结果解析要求 native 返回必填文件元数据；缺少 `fileName`、`relativePath` 或 `bytes` 时按 contract error 处理，不记录为成功写入。</li>
+        <li>`TEST.md` 与 `LOCAL.md` 写明具体 adb 拉取命令形态，并明确本轮未执行 adb/设备验证，真机拉取证据延期。</li>
+        <li>验证结果：`flutter test test/performance_tier` 通过；`cd example &amp;&amp; flutter test test/demo/internal_tools_controller_test.dart test/demo/public_example_mode_test.dart` 通过。</li>
+        <li>延期验收：用户需在 Android 真机上生成 report，并执行 `adb shell run-as &lt;applicationId&gt; ls files/performance_tier_reports` 与 `adb exec-out run-as &lt;applicationId&gt; cat files/performance_tier_reports/&lt;fileName&gt; &gt; &lt;host-report-file&gt;` 或等价 `@test-android-apps` 收集流程。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Plan 执行计划</h2>
+      <ul>
+        <li>新增 report model、write result、file metadata 和 MethodChannel report store。</li>
+        <li>扩展 service interface 与 default service，注入 report store 并实现 write/list report 入口。</li>
+        <li>扩展 Android plugin 的 MethodChannel handler，写入和列出 app-private report 文件。</li>
+        <li>更新 barrel export、平台契约测试、report model/store/service 测试。</li>
+        <li>更新 `TEST.md` / `LOCAL.md` 的具体 adb 拉取命令和延期真机验证说明。</li>
+        <li>运行允许的相关测试子集，最后把验证证据和剩余风险写回本 goal。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Problem 记录</h2>
+      <ul>
+        <li>无实现阻塞问题。剩余风险：Codex 不能执行 Android build、adb 或设备拉取，因此本轮已证明 Dart contract、MethodChannel 调用形态、service 编排和 Android 源码契约；真实设备报告生成、文件权限和 host 拉取仍需用户验证。本轮 API 为 report loop 骨架，不声明 ready / publishable / consumer-ready。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>关联文档</h2>
+      <ul>
+        <li><a href="../../SPEC.md">SPEC.md</a>：当前 Android-first 性能监测方向和 breaking change 姿态。</li>
+        <li><a href="../../TEST.md">TEST.md</a>：当前验证边界、report pull 证据要求和 Codex 命令限制。</li>
+        <li><a href="../../LOCAL.md">LOCAL.md</a>：本地命令、adb handoff 和 secret 边界。</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>变更记录</h2>
+      <ul>
+        <li>2026-06-11: 创建 goal 文档。</li>
+        <li>2026-06-11: 补齐 research、design、check、plan、problem，并切换为 active。</li>
+        <li>2026-06-11: 完成本地 Android report loop 骨架实现与非设备测试验证，保留 active 等待真机拉取证据。</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>

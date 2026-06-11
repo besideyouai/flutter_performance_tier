@@ -158,6 +158,18 @@ class _FakePerformanceTierService implements PerformanceTierService {
 
   @override
   Stream<TierDecision> watchDecision() => _controller.stream;
+
+  @override
+  Future<PerformanceReportWriteResult> writeCurrentReport({
+    String source = PerformanceReport.defaultSource,
+  }) {
+    throw UnsupportedError('Fake service does not write reports.');
+  }
+
+  @override
+  Future<List<PerformanceReportFile>> listPerformanceReports() {
+    throw UnsupportedError('Fake service does not list reports.');
+  }
 }
 
 class _FakeDeviceSignalCollector implements DeviceSignalCollector {
@@ -228,6 +240,18 @@ class _RuntimeAwareFakePerformanceTierService
 
   @override
   Stream<TierDecision> watchDecision() => _controller.stream;
+
+  @override
+  Future<PerformanceReportWriteResult> writeCurrentReport({
+    String source = PerformanceReport.defaultSource,
+  }) {
+    throw UnsupportedError('Fake service does not write reports.');
+  }
+
+  @override
+  Future<List<PerformanceReportFile>> listPerformanceReports() {
+    throw UnsupportedError('Fake service does not list reports.');
+  }
 
   Future<TierDecision> _recompute() async {
     final signals = await _signalCollector.collect();

@@ -2,7 +2,7 @@
 
 `flutter_performance_tier` 是一个面向 Android / iOS 的 Flutter 性能分级 package，用于在应用启动阶段快速给出设备分级，并在运行期根据热状态、低电量、内存压力、掉帧等信号进行动态降级。
 
-这个 `README.md` 现在只服务于外部主工程接入方：说明 package 提供什么能力、如何接入、如何消费结果。项目进度、计划、讨论、设计等内部资料统一放在 `docs/`，入口见 `docs/README.md`。
+这个 `README.md` 现在只服务于外部主工程接入方：说明 package 提供什么能力、如何接入、如何消费结果。项目当前姿态、验证边界和本地规则见根目录事实源；计划、讨论、设计等内部资料统一放在 `docs/`，入口见 `docs/README.md`。
 
 ## 能力概览
 
@@ -38,6 +38,11 @@ import 'package:flutter_performance_tier/flutter_performance_tier.dart';
 ```
 
 ## 快速接入
+
+> BREAKING CHANGE：`PerformanceTierService` 当前已增加 `writeCurrentReport`
+> 和 `listPerformanceReports`。如果主工程提供自定义 service 实现，需要补齐这
+> 两个方法；Android report loop 目前是骨架能力，consumer-ready 状态以
+> `TEST.md` 的真机拉取证据为准。
 
 最小接入链路只有四步：
 
@@ -217,10 +222,13 @@ package 默认只在本地内存中使用这些信号做分级和运行期调整
 
 ## 文档导航
 
+- `SPEC.md`：当前项目姿态、Android-first 性能监测方向、breaking change 口径
+- `TEST.md`：测试范围、真机报告拉取证据、adb / `@test-android-apps` 验证边界
+- `LOCAL.md`：本地 setup、human-only 命令、secret 和机器本地文件
 - `docs/README.md`：内部文档总入口
-- `docs/plan/`：当前进度、验收与收口资料
+- `docs/plan/`：历史阶段进度、验收与收口资料
 - `docs/plans/`：分阶段执行计划
 - `docs/design/`：设计与边界决策
 - `docs/discussion/`：讨论类文档入口
 
-如果你是在接入主工程，优先阅读本 README 和 `example/`；如果你是在维护 package 本身，再进入 `docs/` 查看内部资料。
+如果你是在接入主工程，优先阅读本 README 和 `example/`；如果你是在维护 package 本身，先读 `SPEC.md`、`TEST.md` 和 `AGENTS.md`，再进入 `docs/` 查看内部资料。

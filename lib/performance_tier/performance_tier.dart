@@ -9,6 +9,7 @@ export 'engine/tier_engine.dart';
 export 'logging/performance_tier_logger.dart';
 
 export 'model/device_signals.dart';
+export 'model/performance_report.dart';
 export 'model/runtime_tier_observation.dart';
 export 'model/tier_confidence.dart';
 export 'model/tier_decision.dart';
@@ -22,4 +23,6 @@ export 'service/default_performance_tier_service.dart';
 export 'service/device_signal_collector.dart';
 export 'service/frame_drop_signal_sampler.dart';
 export 'service/method_channel_device_signal_collector.dart';
+export 'service/method_channel_performance_report_store.dart';
+export 'service/performance_report_store.dart';
 export 'service/runtime_tier_controller.dart';

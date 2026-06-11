@@ -135,6 +135,18 @@ class _FakePerformanceTierService implements PerformanceTierService {
   Stream<TierDecision> watchDecision() {
     return _controller.stream;
   }
+
+  @override
+  Future<PerformanceReportWriteResult> writeCurrentReport({
+    String source = PerformanceReport.defaultSource,
+  }) {
+    throw UnsupportedError('Fake service does not write reports.');
+  }
+
+  @override
+  Future<List<PerformanceReportFile>> listPerformanceReports() {
+    throw UnsupportedError('Fake service does not list reports.');
+  }
 }
 
 class _SpyUploadProbeController extends PerformanceTierUploadProbeController {

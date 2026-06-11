@@ -12,6 +12,9 @@ void main() {
 
         expect(source, contains(_channelName));
         expect(source, contains(_collectMethod));
+        expect(source, contains(_writeReportMethod));
+        expect(source, contains(_listReportsMethod));
+        expect(source, contains(_reportsDirectoryName));
         for (final key in _androidExpectedKeys) {
           expect(source, contains('"$key"'));
         }
@@ -117,6 +120,9 @@ const String _iosAppDelegatePath =
 
 const String _channelName = 'performance_tier/device_signals';
 const String _collectMethod = 'collectDeviceSignals';
+const String _writeReportMethod = 'writePerformanceReport';
+const String _listReportsMethod = 'listPerformanceReports';
+const String _reportsDirectoryName = 'performance_tier_reports';
 const int _bytesPerGb = 1024 * 1024 * 1024;
 
 const List<String> _androidExpectedKeys = <String>[

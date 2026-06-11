@@ -7,6 +7,14 @@
 - Read `../../AGENTS.md` as needed when workspace-level coordination, ownership, or validation policy matters.
 - This package is a member of the repo-root Dart workspace; keep `resolution: workspace` aligned with the root `pubspec.yaml`.
 
+## Read Before Editing
+- Read `SPEC.md` before interpreting project stage, compatibility posture, Android monitoring direction, or breaking-change tolerance.
+- Read `TEST.md` before adding tests, judging validation scope, investigating runtime bugs, or discussing adb / `@test-android-apps` report collection.
+- Read `LOCAL.md` before changing local setup, debug entries, run instructions, adb handoff notes, secrets, or machine-local files.
+- Read `PACKAGING.md` before changing package identity, Android/iOS identifiers, signing, versioning, artifact naming, install/update behavior, or deployment docs.
+- Read `GENERATION.md` before adding, editing, deleting, or validating generated files, generated report outputs, secure-env generation, or generation commands.
+- Use `docs/README.md` for historical plans, design notes, progress logs, and archived discussion.
+
 ## Reverse Discovery
 - If you start in `example/`, read `example/AGENTS.md` first, then come back here.
 - Use this file for package-local rules.
@@ -21,6 +29,7 @@
 - Treat `.dart_tool/` and `build/` as generated output.
 
 ## Build, Test, and Development Commands
+- Current project posture and validation authority live in `SPEC.md` and `TEST.md`.
 - Run dependency resolution from the workspace root when working in this workspace: `cd ../.. && flutter pub get`.
 - Do not run `flutter analyze` by default; if static analysis is relevant, provide the exact command for the user to run.
 - `dart format lib test example/lib example/test` - format source and test files before commit.
@@ -29,7 +38,8 @@
 - Human-only: `flutter run -t example/lib/main.dart` launches the public example app locally.
 - Human-only: `flutter run -t example/lib/internal_upload_probe_main.dart` launches the isolated internal upload probe entrypoint.
 - Human-only: `flutter build apk --release` builds a release APK for packaging checks.
-- Agents must not run the human-only build, run, simulator, or device commands; hand them off when manual validation is needed.
+- Human-only: adb report-pull commands and `@test-android-apps` device collection workflows for Android performance reports.
+- Agents must not run the human-only build, run, install, simulator, emulator, adb, or device commands; hand them off when manual validation is needed.
 
 ## Coding Style & Naming Conventions
 - Follow `analysis_options.yaml` (`package:flutter_lints/flutter.yaml`).

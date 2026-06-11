@@ -6,6 +6,7 @@ import '../engine/rule_based_tier_engine.dart';
 import '../engine/tier_engine.dart';
 import '../logging/performance_tier_logger.dart';
 import '../model/device_signals.dart';
+import '../model/performance_report.dart';
 import '../model/tier_confidence.dart';
 import '../model/tier_decision.dart';
 import '../model/tier_level.dart';
@@ -14,6 +15,8 @@ import '../policy/policy_resolver.dart';
 import 'device_signal_collector.dart';
 import 'frame_drop_signal_sampler.dart';
 import 'method_channel_device_signal_collector.dart';
+import 'method_channel_performance_report_store.dart';
+import 'performance_report_store.dart';
 import 'runtime_tier_controller.dart';
 
 class DefaultPerformanceTierService implements PerformanceTierService {
@@ -24,6 +27,7 @@ class DefaultPerformanceTierService implements PerformanceTierService {
     ConfigProvider? configProvider,
     RuntimeTierController? runtimeTierController,
     FrameDropSignalSampler? frameDropSignalSampler,
+    PerformanceReportStore? performanceReportStore,
     this._runtimeSignalRefreshInterval = const Duration(seconds: 15),
     bool enableFrameDropSignal = false,
     PerformanceTierLogger? logger,
@@ -44,6 +48,8 @@ class DefaultPerformanceTierService implements PerformanceTierService {
            (enableFrameDropSignal
                ? SchedulerFrameDropSignalSampler()
                : const DisabledFrameDropSignalSampler()),
+       _performanceReportStore =
+           performanceReportStore ?? MethodChannelPerformanceReportStore(),
        _logger = logger ?? const SilentPerformanceTierLogger(),
        _sessionId = _buildSessionId();
 
@@ -53,6 +59,7 @@ class DefaultPerformanceTierService implements PerformanceTierService {
   final ConfigProvider _configProvider;
   final RuntimeTierController _runtimeTierController;
   final FrameDropSignalSampler _frameDropSignalSampler;
+  final PerformanceReportStore _performanceReportStore;
   final Duration _runtimeSignalRefreshInterval;
   final PerformanceTierLogger _logger;
   final String _sessionId;
@@ -63,6 +70,7 @@ class DefaultPerformanceTierService implements PerformanceTierService {
   Future<void>? _initializeInFlight;
   Future<void>? _recomputeInFlight;
   Timer? _runtimeSignalTimer;
+  int _reportSequence = 0;
   bool _initialized = false;
   bool _disposed = false;
 
@@ -128,6 +136,46 @@ class DefaultPerformanceTierService implements PerformanceTierService {
     _logEvent('service.refresh.completed', <String, Object?>{
       'tier': _currentDecision?.tier.name,
     });
+  }
+
+  @override
+  Future<PerformanceReportWriteResult> writeCurrentReport({
+    String source = PerformanceReport.defaultSource,
+  }) async {
+    final decision = await getCurrentDecision();
+    final reportSequence = _nextReportSequence();
+    final report = PerformanceReport.fromDecision(
+      decision: decision,
+      source: source,
+      reportId: '$_sessionId-report-$reportSequence',
+      metadata: <String, Object?>{
+        'serviceSessionId': _sessionId,
+        'reportSequence': reportSequence,
+      },
+    );
+    _logEvent('report.write.requested', <String, Object?>{
+      'reportId': report.reportId,
+      'schemaVersion': report.schemaVersion,
+      'fileName': report.defaultFileName,
+      'source': source,
+    });
+    final result = await _performanceReportStore.write(report);
+    _logEvent('report.write.completed', <String, Object?>{
+      'reportId': result.reportId,
+      'fileName': result.fileName,
+      'relativePath': result.relativePath,
+      'bytes': result.bytes,
+    });
+    return result;
+  }
+
+  @override
+  Future<List<PerformanceReportFile>> listPerformanceReports() async {
+    final reports = await _performanceReportStore.list();
+    _logEvent('report.list.completed', <String, Object?>{
+      'count': reports.length,
+    });
+    return reports;
   }
 
   @override
@@ -392,6 +440,11 @@ class DefaultPerformanceTierService implements PerformanceTierService {
   static String _buildSessionId() {
     final micros = DateTime.now().microsecondsSinceEpoch;
     return 'perf-tier-$micros';
+  }
+
+  int _nextReportSequence() {
+    _reportSequence += 1;
+    return _reportSequence;
   }
 }
 

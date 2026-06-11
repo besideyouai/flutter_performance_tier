@@ -1,5 +1,7 @@
 # 运行期动态降级策略（M3）
 
+> 状态说明（2026-06-11）：本文件保留为 M3 运行期动态分级的历史实现与参考资料，不再定义当前项目方向或验收标准。当前项目已调整为 Android-first 性能监测与设备侧报告拉取闭环，事实源见 `../../SPEC.md`，验证口径见 `../../TEST.md`。
+>
 > 更新时间：2026-03-11  
 > 适用实现：`RuntimeTierController` + `DefaultPerformanceTierService` 当前主干实现
 
@@ -184,13 +186,13 @@ final service = DefaultPerformanceTierService(
 - `example/test/widget_test.dart`
   - example 结构化诊断页关键元素冒烟断言
 
-## 8. 后续建议
+## 8. 后续建议（当前口径）
 
-- Android 真机闭环已经打通，后续优先补齐 iOS 侧同口径样本与上传验证。
-- Android 当前建议继续积累更多机型样本，但不再阻塞当前阶段文档收口与业务接入。
-- 优先将 `runtimeObservation` 与 `deviceSignals` 字段纳入诊断 JSON，并通过业务上传服务归档到 OSS。
-- 业务日志平台接入与阈值回归报表看板属于后续增强项，不作为当前交付前置。
-- 在 M4 远程配置阶段，把联调模板参数下沉到可灰度下发配置。
+- 将 `runtimeObservation` 与 `deviceSignals` 视为 Android 性能报告 schema 的候选输入，而不是 OSS 上传目标本身。
+- 优先补齐 Android 设备侧报告生成、存储、保留策略与 host-side 拉取闭环。
+- `adb` 直拉与 `@test-android-apps` 辅助收集应产出等价的本机报告文件。
+- iOS 同口径样本、upload probe、业务日志平台接入与阈值回归报表看板都属于后续增强项，不作为当前 Android report loop 的前置。
+- 在后续远程配置阶段，再评估是否把联调模板参数下沉到可灰度下发配置。
 
 ## 9. Android 真机样本摘要（2026-03-11）
 

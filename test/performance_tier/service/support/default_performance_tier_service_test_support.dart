@@ -124,6 +124,34 @@ class RecordingLogger implements PerformanceTierLogger {
   }
 }
 
+class RecordingPerformanceReportStore implements PerformanceReportStore {
+  RecordingPerformanceReportStore({
+    List<PerformanceReportFile> files = const <PerformanceReportFile>[],
+  }) : files = List<PerformanceReportFile>.from(files);
+
+  final List<PerformanceReport> reports = <PerformanceReport>[];
+  final List<PerformanceReportFile> files;
+  int listCallCount = 0;
+
+  @override
+  Future<PerformanceReportWriteResult> write(PerformanceReport report) async {
+    reports.add(report);
+    return PerformanceReportWriteResult(
+      reportId: report.reportId,
+      fileName: report.defaultFileName,
+      relativePath: 'files/performance_tier_reports/${report.defaultFileName}',
+      bytes: report.toJson().length,
+      writtenAt: report.generatedAt,
+    );
+  }
+
+  @override
+  Future<List<PerformanceReportFile>> list() async {
+    listCallCount += 1;
+    return List<PerformanceReportFile>.unmodifiable(files);
+  }
+}
+
 DeviceSignals androidSignals({
   required int ramBytes,
   required int sdkInt,
