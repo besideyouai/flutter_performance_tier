@@ -13,10 +13,15 @@ from typing import Any, Iterable
 
 SUPPORTED_SUFFIXES = {".json", ".jsonl", ".ndjson", ".log", ".txt"}
 ACTIVE_RUNTIME_STATUSES = {"pending", "active", "cooldown", "recovery-pending"}
+PERFORMANCE_REPORT_SCHEMA_NAME = "flutter_performance_tier.performance_report"
 SESSION_HEADERS = [
     "source_file",
     "source_ref",
     "source_type",
+    "schema_name",
+    "schema_version",
+    "report_id",
+    "report_source",
     "report_status",
     "generated_at",
     "session_id",
@@ -107,7 +112,7 @@ FLAGGED_HEADERS = [
 ISSUE_HEADERS = ["source_ref", "issue", "detail"]
 
 
-@dataclass(slots=True)
+@dataclass
 class ParseIssue:
     source_ref: str
     issue: str
@@ -188,6 +193,14 @@ def safe_str(value: Any) -> str:
     if isinstance(value, str):
         return value
     return str(value)
+
+
+def report_source_type(report: dict[str, Any]) -> str:
+    if safe_str(report.get("schemaName")) == PERFORMANCE_REPORT_SCHEMA_NAME:
+        return "performance-report"
+    if "schemaVersion" in report and "reportId" in report and "decision" in report:
+        return "performance-report"
+    return "ai-report"
 
 
 def average(values: Iterable[float]) -> float | None:
@@ -317,7 +330,12 @@ class DiagnosticsAnalyzer:
                 self._ingest_value(item, source_file, f"{source_ref}#{index}")
             return
         if looks_like_report(value):
-            self._add_report_row(source_file, source_ref, value, "ai-report")
+            self._add_report_row(
+                source_file,
+                source_ref,
+                value,
+                report_source_type(value),
+            )
             return
         if looks_like_decision(value):
             self._add_decision_row(source_file, source_ref, value, "decision-only")
@@ -338,14 +356,22 @@ class DiagnosticsAnalyzer:
         source_type: str,
     ) -> None:
         logs = report.get("recentStructuredLogs")
+        metadata = report.get("metadata")
+        metadata_map = metadata if isinstance(metadata, dict) else {}
         recent_structured_log_count = len(logs) if isinstance(logs, list) else 0
         embedded_events = self._parse_embedded_logs(source_file, source_ref, logs)
-        session_id = self._pick_session_id(embedded_events)
+        session_id = self._pick_session_id(embedded_events) or safe_str(
+            metadata_map.get("serviceSessionId")
+        )
         row = self._build_session_row(
             source_file=source_file,
             source_ref=source_ref,
             source_type=source_type,
-            report_status=safe_str(report.get("status")),
+            schema_name=safe_str(report.get("schemaName")),
+            schema_version=safe_int(report.get("schemaVersion")),
+            report_id=safe_str(report.get("reportId")),
+            report_source=safe_str(report.get("source")),
+            report_status=safe_str(report.get("status")) or "ok",
             generated_at=safe_str(report.get("generatedAt")),
             initializing=normalize_bool(report.get("initializing")),
             decision=report.get("decision"),
@@ -369,6 +395,10 @@ class DiagnosticsAnalyzer:
             source_file=source_file,
             source_ref=source_ref,
             source_type=source_type,
+            schema_name="",
+            schema_version=None,
+            report_id="",
+            report_source="",
             report_status="ok",
             generated_at=safe_str(decision.get("decidedAt")),
             initializing="false",
@@ -426,6 +456,10 @@ class DiagnosticsAnalyzer:
         source_file: Path,
         source_ref: str,
         source_type: str,
+        schema_name: str,
+        schema_version: int | None,
+        report_id: str,
+        report_source: str,
         report_status: str,
         generated_at: str,
         initializing: str,
@@ -451,6 +485,10 @@ class DiagnosticsAnalyzer:
             "source_file": str(source_file),
             "source_ref": source_ref,
             "source_type": source_type,
+            "schema_name": schema_name,
+            "schema_version": schema_version,
+            "report_id": report_id,
+            "report_source": report_source,
             "report_status": report_status,
             "generated_at": generated_at,
             "session_id": session_id,
@@ -564,6 +602,10 @@ class DiagnosticsAnalyzer:
                     source_file=Path(source_file),
                     source_ref=safe_str(latest.get("source_ref")),
                     source_type="log-session",
+                    schema_name="",
+                    schema_version=None,
+                    report_id="",
+                    report_source="",
                     report_status="ok",
                     generated_at=safe_str(latest.get("timestamp")),
                     initializing="false",

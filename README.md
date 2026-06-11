@@ -143,7 +143,7 @@ final service = DefaultPerformanceTierService(
 - Web、macOS、Windows、Linux、Fuchsia 宿主当前可以安全编译并初始化服务，但默认不会调用原生通道，而是返回一份有限的 fallback `DeviceSignals`
 - 因此，非移动端宿主默认更偏向“可运行 + 可给出保守分级”，如果你们需要更准确的设备分级，请自行实现并注入 `DeviceSignalCollector`
 - plugin 原生通道名为 `performance_tier/device_signals`
-- `example/lib/demo/` 中的 `Internal Tools`、preset 注入和 upload probe 仅用于联调验证，不建议主工程直接照搬
+- `example/lib/demo/` 中的 `Internal Tools`、Android report loop、preset 注入和 upload probe 仅用于联调验证，不建议主工程直接照搬
 
 ## 真机权限与隐私说明
 
@@ -218,7 +218,7 @@ package 默认只在本地内存中使用这些信号做分级和运行期调整
 
 `example/lib/main.dart` 展示的是面向接入方的公开示例。内部联调能力仍保留在 `Internal Tools` 和 `example/lib/internal_upload_probe_main.dart`，但它们不再作为这个 README 的主线内容。
 
-当前 `example/` 仍是 workspace 内的演示与联调工程，依赖了 workspace 本地包与内部 upload probe 配置，因此不建议把整个 `example/` 直接当作对外分发模板；如果你只想参考主工程接入方式，请优先看 `example/lib/main.dart`。
+当前 `example/` 仍是 workspace 内的演示与联调工程，依赖了 workspace 本地包与内部 upload probe 配置，因此不建议把整个 `example/` 直接当作对外分发模板；如果你只想参考主工程接入方式，请优先看 `example/lib/main.dart`。Android report loop 的真机触发入口在 `Internal Tools` 中，具体拉取证据要求以 `TEST.md` 为准。
 
 ## 文档导航
 

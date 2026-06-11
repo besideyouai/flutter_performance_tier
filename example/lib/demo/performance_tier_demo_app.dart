@@ -111,6 +111,16 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
                   _controller.supportsRuntimeSignalPresets,
               currentPreset: _internalToolsController.runtimeSignalPreset,
               onSelectedPreset: _onSelectedPreset,
+              writingAndroidReport: _controller.writingAndroidReport,
+              listingAndroidReports: _controller.listingAndroidReports,
+              lastReportWriteResult: _controller.lastReportWriteResult,
+              androidReportFiles: _controller.androidReportFiles,
+              androidReportError: _controller.androidReportError,
+              androidReportCommands: _controller.buildAndroidReportCommands(),
+              onWriteAndroidReport: _controller.writeAndroidReport,
+              onListAndroidReports: _controller.listAndroidReports,
+              onCopyAndroidReportCommands: () =>
+                  _controller.copyAndroidReportCommands(context),
               uploadProbeController:
                   _internalToolsController.uploadProbeController,
               onRunUploadProbe: _runUploadProbe,
@@ -125,7 +135,10 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
   }
 
   Map<String, Object?> _buildExtraSections() {
-    return _internalToolsController.buildReportSections();
+    return <String, Object?>{
+      ..._internalToolsController.buildReportSections(),
+      ..._controller.buildAndroidReportSections(),
+    };
   }
 
   String _buildAiReport() {
@@ -243,6 +256,15 @@ class _InternalToolsSection extends StatelessWidget {
     required this.supportsRuntimeSignalPresets,
     required this.currentPreset,
     required this.onSelectedPreset,
+    required this.writingAndroidReport,
+    required this.listingAndroidReports,
+    required this.lastReportWriteResult,
+    required this.androidReportFiles,
+    required this.androidReportError,
+    required this.androidReportCommands,
+    required this.onWriteAndroidReport,
+    required this.onListAndroidReports,
+    required this.onCopyAndroidReportCommands,
     required this.uploadProbeController,
     required this.onRunUploadProbe,
     required this.onClearAuthSession,
@@ -252,6 +274,15 @@ class _InternalToolsSection extends StatelessWidget {
   final bool supportsRuntimeSignalPresets;
   final DemoRuntimeSignalPreset currentPreset;
   final Future<void> Function(DemoRuntimeSignalPreset preset) onSelectedPreset;
+  final bool writingAndroidReport;
+  final bool listingAndroidReports;
+  final PerformanceReportWriteResult? lastReportWriteResult;
+  final List<PerformanceReportFile> androidReportFiles;
+  final String? androidReportError;
+  final String androidReportCommands;
+  final Future<void> Function() onWriteAndroidReport;
+  final Future<void> Function() onListAndroidReports;
+  final Future<void> Function() onCopyAndroidReportCommands;
   final PerformanceTierUploadProbeController uploadProbeController;
   final Future<void> Function() onRunUploadProbe;
   final Future<void> Function() onClearAuthSession;
@@ -267,8 +298,8 @@ class _InternalToolsSection extends StatelessWidget {
       child: ExpansionTile(
         title: const Text('Internal Tools'),
         subtitle: const Text(
-          'Runtime presets, structured logs, and upload probe helpers for '
-          'internal validation.',
+          'Android reports, runtime presets, structured logs, and upload '
+          'probe helpers for internal validation.',
         ),
         childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         children: <Widget>[
@@ -279,6 +310,21 @@ class _InternalToolsSection extends StatelessWidget {
               icon: const Icon(Icons.copy),
               label: const Text('Copy latest log'),
             ),
+          ),
+          const SizedBox(height: 8),
+          _AndroidReportActions(
+            writingReport: writingAndroidReport,
+            listingReports: listingAndroidReports,
+            onWriteReport: onWriteAndroidReport,
+            onListReports: onListAndroidReports,
+            onCopyCommands: onCopyAndroidReportCommands,
+          ),
+          const SizedBox(height: 8),
+          _AndroidReportPanel(
+            lastWriteResult: lastReportWriteResult,
+            files: androidReportFiles,
+            error: androidReportError,
+            adbCommands: androidReportCommands,
           ),
           const SizedBox(height: 8),
           if (supportsRuntimeSignalPresets)
@@ -295,6 +341,125 @@ class _InternalToolsSection extends StatelessWidget {
           const SizedBox(height: 8),
           _UploadProbePanel(controller: uploadProbeController),
         ],
+      ),
+    );
+  }
+}
+
+class _AndroidReportActions extends StatelessWidget {
+  const _AndroidReportActions({
+    required this.writingReport,
+    required this.listingReports,
+    required this.onWriteReport,
+    required this.onListReports,
+    required this.onCopyCommands,
+  });
+
+  final bool writingReport;
+  final bool listingReports;
+  final Future<void> Function() onWriteReport;
+  final Future<void> Function() onListReports;
+  final Future<void> Function() onCopyCommands;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: <Widget>[
+        FilledButton.icon(
+          onPressed: writingReport || listingReports ? null : onWriteReport,
+          icon: writingReport
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.description_outlined),
+          label: Text(writingReport ? 'Generating...' : 'Generate report'),
+        ),
+        OutlinedButton.icon(
+          onPressed: writingReport || listingReports ? null : onListReports,
+          icon: listingReports
+              ? const SizedBox.square(
+                  dimension: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.list_alt),
+          label: Text(listingReports ? 'Listing...' : 'List reports'),
+        ),
+        OutlinedButton.icon(
+          onPressed: onCopyCommands,
+          icon: const Icon(Icons.copy),
+          label: const Text('Copy adb command'),
+        ),
+      ],
+    );
+  }
+}
+
+class _AndroidReportPanel extends StatelessWidget {
+  const _AndroidReportPanel({
+    required this.lastWriteResult,
+    required this.files,
+    required this.error,
+    required this.adbCommands,
+  });
+
+  final PerformanceReportWriteResult? lastWriteResult;
+  final List<PerformanceReportFile> files;
+  final String? error;
+  final String adbCommands;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final latest = lastWriteResult;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.all(color: theme.dividerColor),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('Android report loop', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'On-device dir: files/performance_tier_reports/',
+              style: theme.textTheme.bodySmall,
+            ),
+            if (error != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Text(
+                'Report error: $error',
+                style: TextStyle(color: theme.colorScheme.error),
+              ),
+            ],
+            const SizedBox(height: 8),
+            Text('Last write', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text('fileName: ${latest?.fileName ?? '-'}'),
+            Text('relativePath: ${latest?.relativePath ?? '-'}'),
+            Text('bytes: ${latest?.bytes ?? '-'}'),
+            const SizedBox(height: 8),
+            Text('adb commands', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            SelectableText(
+              adbCommands,
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+            const SizedBox(height: 8),
+            Text('Listed reports', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            if (files.isEmpty)
+              const Text('No report listed.')
+            else
+              for (final file in files.take(5))
+                Text('${file.fileName} (${file.bytes} bytes)'),
+          ],
+        ),
       ),
     );
   }

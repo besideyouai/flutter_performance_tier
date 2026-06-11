@@ -27,6 +27,9 @@ void main() {
       expect(find.text('AI Diagnostics JSON'), findsOneWidget);
       expect(find.text('Run /upload probe'), findsNothing);
       expect(find.text('Clear auth session'), findsNothing);
+      expect(find.text('Generate report'), findsNothing);
+      expect(find.text('List reports'), findsNothing);
+      expect(find.text('Copy adb command'), findsNothing);
       expect(find.text('Copy latest log'), findsNothing);
       expect(find.text('Runtime signal preset'), findsNothing);
       expect(find.text('Live device'), findsNothing);
@@ -38,6 +41,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Copy latest log'), findsOneWidget);
+      expect(find.text('Android report loop'), findsOneWidget);
+      expect(find.text('Generate report'), findsOneWidget);
+      expect(find.text('List reports'), findsOneWidget);
+      expect(find.text('Copy adb command'), findsOneWidget);
       expect(find.text('Runtime signal preset'), findsOneWidget);
       expect(find.text('Live device'), findsOneWidget);
       expect(find.text('Memory critical'), findsOneWidget);

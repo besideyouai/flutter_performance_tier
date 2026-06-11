@@ -86,7 +86,7 @@
 
     <section>
       <h2>当前状态</h2>
-      <p>active：Android-first 性能报告最小闭环骨架已完成本地实现和非设备测试验证。由于项目规则禁止 Codex 执行 adb、设备运行和 `@test-android-apps` 采集，本目标仍保持 active，等待用户侧真机生成报告并通过 adb 或 `@test-android-apps` 拉取验证。</p>
+      <p>active：Android-first 性能报告最小闭环骨架已完成本地实现和非设备测试验证；example 的 Internal Tools 已提供生成报告、列出报告和复制 adb 拉取命令的入口，离线分析脚本已将 V1 performance report 作为一等输入。由于项目规则禁止 Codex 执行 adb、设备运行和 `@test-android-apps` 采集，本目标仍保持 active，等待用户侧真机生成报告并通过 adb 或 `@test-android-apps` 拉取验证。</p>
     </section>
 
     <section>
@@ -118,9 +118,11 @@
         <li>Dart report model 能稳定生成 JSON，包含 schema version、report id、生成时间、source、decision、metadata，并有单测覆盖。</li>
         <li>`DefaultPerformanceTierService` 能在已初始化或未初始化时生成并写入当前 report，连续写入不会复用 report id / file name，返回文件名、相对路径、字节数等 write result，并有非设备单测覆盖。</li>
         <li>Android plugin 暴露 `writePerformanceReport` 和 `listPerformanceReports` 方法，写入 app-private `files/performance_tier_reports/`，避免覆盖同名报告，并通过平台字段完整性测试检查方法名和目录契约。</li>
+        <li>example 的 `Internal Tools` 提供 `Generate report`、`List reports` 和 `Copy adb command`，让人工真机验收能从 demo 直接触发设备侧报告生成。</li>
         <li>Dart MethodChannel 结果解析要求 native 返回必填文件元数据；缺少 `fileName`、`relativePath` 或 `bytes` 时按 contract error 处理，不记录为成功写入。</li>
+        <li>离线分析脚本识别 V1 `flutter_performance_tier.performance_report`，输出 schema、report id、report source 和 service session metadata，并保留旧 AI diagnostics JSON 兼容路径。</li>
         <li>`TEST.md` 与 `LOCAL.md` 写明具体 adb 拉取命令形态，并明确本轮未执行 adb/设备验证，真机拉取证据延期。</li>
-        <li>验证结果：`flutter test test/performance_tier` 通过；`cd example &amp;&amp; flutter test test/demo/internal_tools_controller_test.dart test/demo/public_example_mode_test.dart` 通过。</li>
+        <li>验证结果：`flutter test test/performance_tier` 通过；`cd example &amp;&amp; flutter test test/demo/internal_tools_controller_test.dart test/widget_test.dart` 通过；`python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_sample_performance_report` 通过。</li>
         <li>延期验收：用户需在 Android 真机上生成 report，并执行 `adb shell run-as &lt;applicationId&gt; ls files/performance_tier_reports` 与 `adb exec-out run-as &lt;applicationId&gt; cat files/performance_tier_reports/&lt;fileName&gt; &gt; &lt;host-report-file&gt;` 或等价 `@test-android-apps` 收集流程。</li>
       </ul>
     </section>
@@ -132,6 +134,7 @@
         <li>扩展 service interface 与 default service，注入 report store 并实现 write/list report 入口。</li>
         <li>扩展 Android plugin 的 MethodChannel handler，写入和列出 app-private report 文件。</li>
         <li>更新 barrel export、平台契约测试、report model/store/service 测试。</li>
+        <li>补齐 example Internal Tools 的 Android report loop 入口与 analyzer V1 report 输入路径。</li>
         <li>更新 `TEST.md` / `LOCAL.md` 的具体 adb 拉取命令和延期真机验证说明。</li>
         <li>运行允许的相关测试子集，最后把验证证据和剩余风险写回本 goal。</li>
       </ul>
@@ -159,6 +162,7 @@
         <li>2026-06-11: 创建 goal 文档。</li>
         <li>2026-06-11: 补齐 research、design、check、plan、problem，并切换为 active。</li>
         <li>2026-06-11: 完成本地 Android report loop 骨架实现与非设备测试验证，保留 active 等待真机拉取证据。</li>
+        <li>2026-06-11: 补齐 example Internal Tools 的 report 生成/列出/adb 命令入口，并让离线分析脚本识别 V1 performance report。</li>
       </ul>
     </section>
   </main>

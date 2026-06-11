@@ -15,8 +15,10 @@ Known generated or generator-owned content:
 
 - `example/lib/internal_upload_probe/internal_upload_probe_env.g.dart` is generated
   from `example/lib/internal_upload_probe/internal_upload_probe_env.dart`.
-- `tool/testdata/sample_ai_report.json` is a curated fixture, not live device
-  output.
+- `tool/testdata/sample_ai_report.json` is a curated legacy fixture, not live
+  device output.
+- `tool/testdata/sample_performance_report.json` is a curated V1 performance
+  report fixture, not live device output.
 
 Before regenerating upload-probe env code, note that
 `tool/internal_upload_probe_secure_env.json` still references the pre-split path

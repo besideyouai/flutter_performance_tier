@@ -40,6 +40,68 @@ void main() {
   );
 
   test(
+    'demo controller writes and lists Android reports through service',
+    () async {
+      final internalToolsController = InternalToolsController(
+        uploadProbeController: _SpyUploadProbeController(),
+      );
+      final service = _FakePerformanceTierService(
+        initialDecision: _decision(TierLevel.t1Mid),
+        refreshedDecision: _decision(TierLevel.t2High),
+        reportWriteResult: const PerformanceReportWriteResult(
+          reportId: 'report-1',
+          fileName: 'performance_tier_v1_report-1.json',
+          relativePath:
+              'files/performance_tier_reports/performance_tier_v1_report-1.json',
+          bytes: 42,
+        ),
+        reportFiles: const <PerformanceReportFile>[
+          PerformanceReportFile(
+            fileName: 'performance_tier_v1_report-1.json',
+            relativePath:
+                'files/performance_tier_reports/performance_tier_v1_report-1.json',
+            bytes: 42,
+          ),
+        ],
+      );
+      final controller = PerformanceTierDemoController(
+        service: service,
+        internalToolsController: internalToolsController,
+      );
+      addTearDown(controller.close);
+      addTearDown(internalToolsController.close);
+
+      await controller.start();
+      await Future<void>.delayed(Duration.zero);
+      await controller.writeAndroidReport();
+
+      expect(service.writeReportCallCount, 1);
+      expect(service.lastReportSource, 'example-internal-tools');
+      expect(service.listReportsCallCount, 1);
+      expect(
+        controller.lastReportWriteResult?.fileName,
+        'performance_tier_v1_report-1.json',
+      );
+      expect(controller.androidReportFiles, hasLength(1));
+      expect(controller.androidReportError, isNull);
+      expect(
+        controller.buildAndroidReportCommands(),
+        contains(
+          'cat files/performance_tier_reports/performance_tier_v1_report-1.json',
+        ),
+      );
+
+      final reportSections =
+          controller.buildAndroidReportSections()['androidReportLoop']
+              as Map<String, Object?>;
+
+      expect(reportSections['lastWriteResult'], isA<Map<String, Object?>>());
+      expect(reportSections['files'], isA<List<Object?>>());
+      expect(reportSections['adbCommands'], contains('adb shell run-as'));
+    },
+  );
+
+  test(
     'internal tools controller owns runtime preset state, structured logs, and upload probe actions',
     () async {
       final uploadProbeController = _SpyUploadProbeController(
@@ -94,16 +156,23 @@ class _FakePerformanceTierService implements PerformanceTierService {
   _FakePerformanceTierService({
     required this._initialDecision,
     required this._refreshedDecision,
+    this.reportWriteResult,
+    this.reportFiles = const <PerformanceReportFile>[],
   });
 
   final TierDecision _initialDecision;
   final TierDecision _refreshedDecision;
+  final PerformanceReportWriteResult? reportWriteResult;
+  final List<PerformanceReportFile> reportFiles;
   final StreamController<TierDecision> _controller =
       StreamController<TierDecision>.broadcast();
 
   int initializeCallCount = 0;
   int refreshCallCount = 0;
   int disposeCallCount = 0;
+  int writeReportCallCount = 0;
+  int listReportsCallCount = 0;
+  String? lastReportSource;
   TierDecision? _currentDecision;
 
   @override
@@ -139,13 +208,22 @@ class _FakePerformanceTierService implements PerformanceTierService {
   @override
   Future<PerformanceReportWriteResult> writeCurrentReport({
     String source = PerformanceReport.defaultSource,
-  }) {
-    throw UnsupportedError('Fake service does not write reports.');
+  }) async {
+    writeReportCallCount += 1;
+    lastReportSource = source;
+    return reportWriteResult ??
+        const PerformanceReportWriteResult(
+          reportId: 'report-1',
+          fileName: 'report-1.json',
+          relativePath: 'files/performance_tier_reports/report-1.json',
+          bytes: 1,
+        );
   }
 
   @override
-  Future<List<PerformanceReportFile>> listPerformanceReports() {
-    throw UnsupportedError('Fake service does not list reports.');
+  Future<List<PerformanceReportFile>> listPerformanceReports() async {
+    listReportsCallCount += 1;
+    return reportFiles;
   }
 }
 

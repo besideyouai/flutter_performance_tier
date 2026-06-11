@@ -1,0 +1,49 @@
+{
+  "schemaName": "flutter_performance_tier.performance_report",
+  "schemaVersion": 1,
+  "reportId": "perf-tier-1781111111000000-report-1",
+  "generatedAt": "2026-06-11T08:02:03.004Z",
+  "source": "example-internal-tools",
+  "decision": {
+    "tier": "t2High",
+    "confidence": "high",
+    "decidedAt": "2026-06-11T08:01:58.000Z",
+    "deviceSignals": {
+      "platform": "android",
+      "deviceModel": "Pixel 8 Pro",
+      "totalRamBytes": 8589934592,
+      "isLowRamDevice": false,
+      "mediaPerformanceClass": 13,
+      "sdkInt": 35,
+      "memoryPressureState": "normal",
+      "memoryPressureLevel": 0,
+      "frameDropState": "normal",
+      "frameDropLevel": 0,
+      "frameDropRate": 0.02,
+      "frameDroppedCount": 2,
+      "frameSampledCount": 120,
+      "collectedAt": "2026-06-11T08:01:57.000Z"
+    },
+    "runtimeObservation": {
+      "status": "inactive",
+      "triggerReason": null,
+      "statusDurationMs": 0,
+      "downgradeTriggerCount": 0,
+      "recoveryTriggerCount": 0
+    },
+    "reasons": [
+      "mediaPerformanceClass=13 upgraded tier to t3Ultra.",
+      "Resolved policy for tier=t2High."
+    ],
+    "appliedPolicies": {
+      "animationLevel": 2,
+      "mediaPreloadCount": 4,
+      "decodeConcurrency": 2,
+      "imageMaxSidePx": 2048
+    }
+  },
+  "metadata": {
+    "serviceSessionId": "perf-tier-1781111111000000",
+    "reportSequence": 1
+  }
+}

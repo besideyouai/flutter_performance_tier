@@ -33,12 +33,24 @@ class PerformanceTierDemoController extends ChangeNotifier {
   String? _error;
   bool _initializing = true;
   bool _refreshing = false;
+  bool _writingAndroidReport = false;
+  bool _listingAndroidReports = false;
+  PerformanceReportWriteResult? _lastReportWriteResult;
+  List<PerformanceReportFile> _androidReportFiles =
+      const <PerformanceReportFile>[];
+  String? _androidReportError;
 
   TierDecision? get decision => _decision;
   String? get error => _error;
   bool get initializing => _initializing;
   bool get refreshing => _refreshing;
   bool get supportsRuntimeSignalPresets => _providedService == null;
+  bool get writingAndroidReport => _writingAndroidReport;
+  bool get listingAndroidReports => _listingAndroidReports;
+  PerformanceReportWriteResult? get lastReportWriteResult =>
+      _lastReportWriteResult;
+  List<PerformanceReportFile> get androidReportFiles => _androidReportFiles;
+  String? get androidReportError => _androidReportError;
 
   Future<void> start() {
     if (_disposed || _started) {
@@ -98,6 +110,85 @@ class PerformanceTierDemoController extends ChangeNotifier {
       buildAiReport(extraSections: extraSections),
       successMessage: 'AI report copied.',
     );
+  }
+
+  Future<void> writeAndroidReport() async {
+    if (_disposed || _writingAndroidReport) {
+      return;
+    }
+
+    _writingAndroidReport = true;
+    _androidReportError = null;
+    _notifySafely();
+    try {
+      final writeResult = await _currentService.writeCurrentReport(
+        source: 'example-internal-tools',
+      );
+      _lastReportWriteResult = writeResult;
+      try {
+        _androidReportFiles = await _currentService.listPerformanceReports();
+      } catch (error) {
+        _androidReportError = 'Report written, but list failed: $error';
+      }
+    } catch (error) {
+      _androidReportError = 'Report write failed: $error';
+    } finally {
+      _writingAndroidReport = false;
+      _notifySafely();
+    }
+  }
+
+  Future<void> listAndroidReports() async {
+    if (_disposed || _listingAndroidReports) {
+      return;
+    }
+
+    _listingAndroidReports = true;
+    _androidReportError = null;
+    _notifySafely();
+    try {
+      _androidReportFiles = await _currentService.listPerformanceReports();
+    } catch (error) {
+      _androidReportError = 'Report list failed: $error';
+    } finally {
+      _listingAndroidReports = false;
+      _notifySafely();
+    }
+  }
+
+  Future<void> copyAndroidReportCommands(BuildContext context) async {
+    await _copyToClipboard(
+      context,
+      buildAndroidReportCommands(),
+      successMessage: 'Android report adb commands copied.',
+    );
+  }
+
+  String buildAndroidReportCommands({
+    String applicationId = _exampleAndroidApplicationId,
+    String hostReportFile = '<host-report-file>',
+  }) {
+    final fileName =
+        _lastReportWriteResult?.fileName ??
+        (_androidReportFiles.isNotEmpty
+            ? _androidReportFiles.first.fileName
+            : '<fileName>');
+    return 'adb shell run-as $applicationId ls files/performance_tier_reports\n'
+        'adb exec-out run-as $applicationId cat '
+        'files/performance_tier_reports/$fileName > $hostReportFile';
+  }
+
+  Map<String, Object?> buildAndroidReportSections() {
+    return <String, Object?>{
+      'androidReportLoop': <String, Object?>{
+        'lastWriteResult': _lastReportWriteResult?.toMap(),
+        'files': _androidReportFiles
+            .map((PerformanceReportFile file) => file.toMap())
+            .toList(growable: false),
+        'error': _androidReportError,
+        'adbCommands': buildAndroidReportCommands(),
+      },
+    };
   }
 
   String buildAiReport({
@@ -269,3 +360,6 @@ class PerformanceTierDemoController extends ChangeNotifier {
     }
   }
 }
+
+const String _exampleAndroidApplicationId =
+    'com.example.flutter_performance_tier_example';

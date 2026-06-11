@@ -1,11 +1,21 @@
-# 诊断数据分析流程
+# 性能报告与诊断数据分析流程
 
 ## 1. 输入前提
 
-这个分析脚本直接面向当前 Demo 已经产出的两类数据：
+当前主输入是 Android 设备侧生成、再通过 `adb` 或 `@test-android-apps`
+拉到主机的 V1 `PerformanceReport` JSON：
 
-- `AI Diagnostics JSON`
+- `schemaName=flutter_performance_tier.performance_report`
+- `schemaVersion=1`
+- 顶层 `reportId`、`generatedAt`、`source`、`metadata`
+- 顶层 `decision`，其中包含 `TierDecision`、`DeviceSignals` 和
+  `RuntimeTierObservation`
+
+脚本仍兼容历史输入，便于对照旧样本：
+
+- Demo 页面复制出的 `AI Diagnostics JSON`
 - `PERF_TIER_LOG` 结构化日志
+- `.jsonl` / `.ndjson` / `.log` / `.txt` 中的 JSON Line
 
 对应项目里的核心字段包括：
 
@@ -16,22 +26,22 @@
 
 ## 2. 运行脚本
 
-分析一批从 OSS 拉下来的 JSON：
+分析一批从 Android 设备拉回主机的 reports：
 
 ```powershell
-python tool\analyze_diagnostics.py D:\path\to\pulled\data
+python tool\analyze_diagnostics.py D:\path\to\pulled\performance_reports
 ```
 
 同时分析多个目录：
 
 ```powershell
-python tool\analyze_diagnostics.py D:\path\to\android D:\path\to\ios
+python tool\analyze_diagnostics.py D:\path\to\android_reports D:\path\to\legacy_logs
 ```
 
 自定义输出目录：
 
 ```powershell
-python tool\analyze_diagnostics.py D:\path\to\pulled\data --output build\diagnostics_analysis_run_01
+python tool\analyze_diagnostics.py D:\path\to\pulled\performance_reports --output build\diagnostics_analysis_run_01
 ```
 
 ## 3. 产出文件
@@ -50,6 +60,8 @@ python tool\analyze_diagnostics.py D:\path\to\pulled\data --output build\diagnos
 1. 先看 `summary.md`，确认样本量、字段完整率、热点问题。
 2. 再看 `parse_issues.csv`，先把坏数据和混合格式清掉。
 3. 再看 `session_summary.csv`：
+   - `source_type` 是否为 `performance-report`
+   - `schema_name` / `schema_version` / `report_id` 是否完整
    - `device_model` 是否缺失
    - `total_ram_bytes` 是否缺失
    - `runtime_status` 是否异常
@@ -85,10 +97,16 @@ python tool\analyze_diagnostics.py D:\path\to\pulled\data --output build\diagnos
 
 ## 6. 冒烟验证
 
-仓库里带了一个样本：
+仓库里带了一个 V1 performance report 样本：
 
 ```powershell
-python tool\analyze_diagnostics.py tool\testdata\sample_ai_report.json --output build\diagnostics_analysis_sample
+python tool\analyze_diagnostics.py tool\testdata\sample_performance_report.json --output build\diagnostics_analysis_sample
 ```
 
-这个命令能跑通，就可以直接切换到真实拉取数据。
+历史 AI diagnostics 样本仍可作为兼容性检查：
+
+```powershell
+python tool\analyze_diagnostics.py tool\testdata\sample_ai_report.json --output build\diagnostics_analysis_legacy_sample
+```
+
+这两个命令能跑通后，就可以切换到真实 Android report 拉取目录。

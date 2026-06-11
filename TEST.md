@@ -76,6 +76,11 @@ adb exec-out run-as <applicationId> cat files/performance_tier_reports/<fileName
 For the bundled example app, `<applicationId>` is usually
 `com.example.flutter_performance_tier_example`.
 
+In the bundled example, expand `Internal Tools` and use `Generate report` to
+write a report before pulling it. `List reports` refreshes the on-device file
+list through the same package API, and `Copy adb command` copies the direct
+retrieval command shape for the latest listed or written report.
+
 The old OSS upload probe is no longer the primary acceptance path. It may remain
 as an internal comparison tool. A change that declares the Android report loop
 ready, publishable, or consumable is not accepted unless a device-side report can

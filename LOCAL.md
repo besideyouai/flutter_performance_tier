@@ -64,6 +64,8 @@ Codex should write the exact command and mark validation as deferred to the user
 
 - Public example entry: `example/lib/main.dart`.
 - Internal upload-probe entry: `example/lib/internal_upload_probe_main.dart`.
+- Android report loop trigger: in the public example, expand `Internal Tools`
+  and use `Generate report`, `List reports`, and `Copy adb command`.
 - Upload-probe configuration may come from `--dart-define` values or the
   internal secure env source in `example/lib/internal_upload_probe/`.
 - `.env.internal_upload_probe` and `encryption_key.json` are machine-local secret
