@@ -11,9 +11,52 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from android_report_gate_contract import (
+    ANDROID_REPORT_GATE_CHECK_LINES,
+    ANDROID_REPORT_GATE_ANDROID_SIGNALS_HEADING,
+    ANDROID_REPORT_GATE_ANDROID_SIGNAL_COLUMNS,
+    ANDROID_REPORT_GATE_CHECKS_HEADING,
+    ANDROID_REPORT_GATE_FIELD_CHECK_LABELS,
+    ANDROID_REPORT_GATE_FAIL_STATUS,
+    ANDROID_REPORT_GATE_HEADER_FIELDS,
+    ANDROID_REPORT_GATE_IDENTITY_CHECKLIST_HEADING,
+    ANDROID_REPORT_GATE_ISSUES_HEADING,
+    ANDROID_REPORT_GATE_MARKDOWN_FILE_NAME,
+    ANDROID_REPORT_GATE_NO_ISSUES_LINE,
+    ANDROID_REPORT_GATE_PASS_STATUS,
+    ANDROID_REPORT_GATE_PERFORMANCE_REPORTS_HEADING,
+    ANDROID_REPORT_GATE_PERFORMANCE_REPORT_COLUMNS,
+    ANDROID_REPORT_GATE_REPORT_FIELD_CHECK_HEADING,
+    ANDROID_REPORT_GATE_SUMMARY_CODE_FENCE_END,
+    ANDROID_REPORT_GATE_SUMMARY_CODE_FENCE_START,
+    ANDROID_REPORT_GATE_SUMMARY_FIELDS,
+    ANDROID_REPORT_GATE_SUMMARY_FILES_SCANNED_FIELD,
+    ANDROID_REPORT_GATE_SUMMARY_HEADING,
+    ANDROID_REPORT_GATE_SUMMARY_ISSUE_COUNT_FIELD,
+    ANDROID_REPORT_GATE_SUMMARY_PARSE_ISSUES_FIELD,
+    ANDROID_REPORT_GATE_SUMMARY_PERFORMANCE_ROWS_FIELD,
+    ANDROID_REPORT_GATE_SUMMARY_SESSION_ROWS_FIELD,
+    ANDROID_REPORT_GATE_SUMMARY_STATUS_FIELD,
+    IDENTITY_CHECKLIST_LABELS,
+    PERFORMANCE_REPORT_SCHEMA_NAME,
+)
+
 SUPPORTED_SUFFIXES = {".json", ".jsonl", ".ndjson", ".log", ".txt"}
 ACTIVE_RUNTIME_STATUSES = {"pending", "active", "cooldown", "recovery-pending"}
-PERFORMANCE_REPORT_SCHEMA_NAME = "flutter_performance_tier.performance_report"
+ANDROID_REPORT_GATE_TIERS = {"t0Low", "t1Mid", "t2High", "t3Ultra"}
+ANDROID_REPORT_GATE_CONFIDENCES = {"low", "medium", "high"}
+ANDROID_REPORT_GATE_RUNTIME_STATUSES = {
+    "inactive",
+    "pending",
+    "active",
+    "cooldown",
+    "recovery-pending",
+    "recovered",
+}
+ANDROID_REPORT_GATE_MEMORY_PRESSURE_STATES = {"normal", "moderate", "critical"}
+ANDROID_REPORT_GATE_MEMORY_PRESSURE_LEVELS = {0, 1, 2}
+ANDROID_REPORT_GATE_THERMAL_STATES = {"normal", "fair", "serious", "critical"}
+ANDROID_REPORT_GATE_THERMAL_LEVELS = {0, 1, 2, 3}
 SESSION_HEADERS = [
     "source_file",
     "source_ref",
@@ -25,6 +68,7 @@ SESSION_HEADERS = [
     "report_status",
     "generated_at",
     "session_id",
+    "report_sequence",
     "initializing",
     "tier",
     "confidence",
@@ -36,6 +80,7 @@ SESSION_HEADERS = [
     "recovery_trigger_count",
     "platform",
     "device_model",
+    "os_version",
     "total_ram_bytes",
     "total_ram_gb",
     "is_low_ram_device",
@@ -110,6 +155,26 @@ FLAGGED_HEADERS = [
     "reason_excerpt",
 ]
 ISSUE_HEADERS = ["source_ref", "issue", "detail"]
+ANDROID_REPORT_GATE_REQUIRED_FIELDS = [
+    "report_id",
+    "report_source",
+    "generated_at",
+    "session_id",
+    "report_sequence",
+    "tier",
+    "confidence",
+    "decided_at",
+    "runtime_status",
+    "platform",
+    "device_model",
+    "os_version",
+    "total_ram_bytes",
+    "is_low_ram_device",
+    "is_low_power_mode_enabled",
+    "sdk_int",
+    "memory_pressure_state",
+    "memory_pressure_level",
+]
 
 
 @dataclass
@@ -159,15 +224,19 @@ def safe_int(value: Any) -> int | None:
     if isinstance(value, int):
         return value
     if isinstance(value, float):
-        return int(value)
+        return int(value) if value.is_integer() else None
     if isinstance(value, str):
         stripped = value.strip()
         if not stripped:
             return None
         try:
-            return int(float(stripped))
+            return int(stripped)
         except ValueError:
-            return None
+            try:
+                parsed = float(stripped)
+            except ValueError:
+                return None
+            return int(parsed) if parsed.is_integer() else None
     return None
 
 
@@ -193,6 +262,58 @@ def safe_str(value: Any) -> str:
     if isinstance(value, str):
         return value
     return str(value)
+
+
+def is_integerish(value: Any) -> bool:
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    if isinstance(value, float):
+        return value.is_integer()
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return False
+        return stripped.isdigit() or (
+            stripped.startswith("-") and stripped[1:].isdigit()
+        )
+    return False
+
+
+def is_json_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def is_json_bool(value: Any) -> bool:
+    return isinstance(value, bool)
+
+
+def is_non_empty_json_string(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def parse_iso_datetime(value: Any) -> datetime | None:
+    text = safe_str(value).strip()
+    if not text or "T" not in text:
+        return None
+    if text.endswith("Z"):
+        text = f"{text[:-1]}+00:00"
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def is_iso_datetime(value: Any) -> bool:
+    return parse_iso_datetime(value) is not None
+
+
+def is_utc_iso_datetime(value: Any) -> bool:
+    parsed = parse_iso_datetime(value)
+    if parsed is None:
+        return False
+    return parsed.tzinfo is not None and parsed.utcoffset() == timezone.utc.utcoffset(parsed)
 
 
 def report_source_type(report: dict[str, Any]) -> str:
@@ -227,6 +348,23 @@ def counter_to_text(counter: Counter[str]) -> str:
         return ""
     parts = [f"{key}:{counter[key]}" for key in sorted(counter)]
     return ", ".join(parts)
+
+
+def gate_value_text(value: Any) -> str:
+    if value is None:
+        return "<missing>"
+    if isinstance(value, str):
+        return f"{value!r} ({type(value).__name__})"
+    return f"{safe_str(value)} ({type(value).__name__})"
+
+
+def markdown_cell(value: Any) -> str:
+    text = safe_str(value) or "-"
+    return text.replace("|", "\\|").replace("\n", " ")
+
+
+def markdown_inline(value: Any) -> str:
+    return safe_str(value).replace("\n", " ").strip()
 
 
 def trim_reason_excerpt(reasons_json: str, max_length: int = 180) -> str:
@@ -369,16 +507,22 @@ class DiagnosticsAnalyzer:
             source_type=source_type,
             schema_name=safe_str(report.get("schemaName")),
             schema_version=safe_int(report.get("schemaVersion")),
+            schema_version_raw=report.get("schemaVersion"),
             report_id=safe_str(report.get("reportId")),
+            report_id_raw=report.get("reportId"),
             report_source=safe_str(report.get("source")),
+            report_source_raw=report.get("source"),
             report_status=safe_str(report.get("status")) or "ok",
             generated_at=safe_str(report.get("generatedAt")),
+            generated_at_raw=report.get("generatedAt"),
             initializing=normalize_bool(report.get("initializing")),
             decision=report.get("decision"),
             top_level_error=safe_str(report.get("error")),
             recent_structured_log_count=recent_structured_log_count,
             upload_probe=report.get("uploadProbe"),
             session_id=session_id,
+            service_session_id_raw=metadata_map.get("serviceSessionId"),
+            report_sequence_raw=metadata_map.get("reportSequence"),
         )
         self.session_rows.append(row)
         if session_id:
@@ -397,16 +541,22 @@ class DiagnosticsAnalyzer:
             source_type=source_type,
             schema_name="",
             schema_version=None,
+            schema_version_raw=None,
             report_id="",
+            report_id_raw=None,
             report_source="",
+            report_source_raw=None,
             report_status="ok",
             generated_at=safe_str(decision.get("decidedAt")),
+            generated_at_raw=decision.get("decidedAt"),
             initializing="false",
             decision=decision,
             top_level_error="",
             recent_structured_log_count=0,
             upload_probe=None,
             session_id="",
+            service_session_id_raw=None,
+            report_sequence_raw=None,
         )
         self.session_rows.append(row)
 
@@ -458,16 +608,22 @@ class DiagnosticsAnalyzer:
         source_type: str,
         schema_name: str,
         schema_version: int | None,
+        schema_version_raw: Any,
         report_id: str,
+        report_id_raw: Any,
         report_source: str,
+        report_source_raw: Any,
         report_status: str,
         generated_at: str,
+        generated_at_raw: Any,
         initializing: str,
         decision: Any,
         top_level_error: str,
         recent_structured_log_count: int,
         upload_probe: Any,
         session_id: str,
+        service_session_id_raw: Any,
+        report_sequence_raw: Any,
     ) -> dict[str, Any]:
         decision_map = decision if isinstance(decision, dict) else {}
         device_signals = decision_map.get("deviceSignals")
@@ -478,7 +634,24 @@ class DiagnosticsAnalyzer:
 
         reason_list = reasons if isinstance(reasons, list) else []
         fallback = any("Failed to collect platform signals" in safe_str(item) for item in reason_list)
-        total_ram_bytes = safe_int(_maybe_dict_value(device_signals, "totalRamBytes"))
+        tier_raw = decision_map.get("tier")
+        confidence_raw = decision_map.get("confidence")
+        runtime_status_raw = _maybe_dict_value(runtime, "status")
+        platform_raw = _maybe_dict_value(device_signals, "platform")
+        total_ram_bytes_raw = _maybe_dict_value(device_signals, "totalRamBytes")
+        device_model_raw = _maybe_dict_value(device_signals, "deviceModel")
+        os_version_raw = _maybe_dict_value(device_signals, "osVersion")
+        is_low_ram_device_raw = _maybe_dict_value(device_signals, "isLowRamDevice")
+        sdk_int_raw = _maybe_dict_value(device_signals, "sdkInt")
+        thermal_state_raw = _maybe_dict_value(device_signals, "thermalState")
+        thermal_state_level_raw = _maybe_dict_value(device_signals, "thermalStateLevel")
+        is_low_power_mode_enabled_raw = _maybe_dict_value(
+            device_signals,
+            "isLowPowerModeEnabled",
+        )
+        memory_pressure_state_raw = _maybe_dict_value(device_signals, "memoryPressureState")
+        memory_pressure_level_raw = _maybe_dict_value(device_signals, "memoryPressureLevel")
+        total_ram_bytes = safe_int(total_ram_bytes_raw)
         total_ram_gb = total_ram_bytes / (1024 ** 3) if total_ram_bytes is not None else None
 
         return {
@@ -487,34 +660,55 @@ class DiagnosticsAnalyzer:
             "source_type": source_type,
             "schema_name": schema_name,
             "schema_version": schema_version,
+            "_schema_version_raw": schema_version_raw,
             "report_id": report_id,
+            "_report_id_raw": report_id_raw,
             "report_source": report_source,
+            "_report_source_raw": report_source_raw,
             "report_status": report_status,
             "generated_at": generated_at,
+            "_generated_at_raw": generated_at_raw,
             "session_id": session_id,
+            "_service_session_id_raw": service_session_id_raw,
+            "report_sequence": safe_int(report_sequence_raw),
+            "_report_sequence_raw": report_sequence_raw,
             "initializing": initializing,
-            "tier": safe_str(decision_map.get("tier")),
-            "confidence": safe_str(decision_map.get("confidence")),
+            "tier": safe_str(tier_raw),
+            "_tier_raw": tier_raw,
+            "confidence": safe_str(confidence_raw),
+            "_confidence_raw": confidence_raw,
             "decided_at": safe_str(decision_map.get("decidedAt")),
-            "runtime_status": safe_str(_maybe_dict_value(runtime, "status")),
+            "_decided_at_raw": decision_map.get("decidedAt"),
+            "runtime_status": safe_str(runtime_status_raw),
+            "_runtime_status_raw": runtime_status_raw,
             "runtime_trigger_reason": safe_str(_maybe_dict_value(runtime, "triggerReason")),
             "status_duration_ms": safe_int(_maybe_dict_value(runtime, "statusDurationMs")),
             "downgrade_trigger_count": safe_int(_maybe_dict_value(runtime, "downgradeTriggerCount")),
             "recovery_trigger_count": safe_int(_maybe_dict_value(runtime, "recoveryTriggerCount")),
-            "platform": safe_str(_maybe_dict_value(device_signals, "platform")),
-            "device_model": safe_str(_maybe_dict_value(device_signals, "deviceModel")),
+            "platform": safe_str(platform_raw),
+            "_platform_raw": platform_raw,
+            "device_model": safe_str(device_model_raw),
+            "_device_model_raw": device_model_raw,
+            "os_version": safe_str(os_version_raw),
+            "_os_version_raw": os_version_raw,
             "total_ram_bytes": total_ram_bytes,
+            "_total_ram_bytes_raw": total_ram_bytes_raw,
             "total_ram_gb": format_float(total_ram_gb, 2),
-            "is_low_ram_device": normalize_bool(_maybe_dict_value(device_signals, "isLowRamDevice")),
+            "is_low_ram_device": normalize_bool(is_low_ram_device_raw),
+            "_is_low_ram_device_raw": is_low_ram_device_raw,
             "media_performance_class": safe_int(_maybe_dict_value(device_signals, "mediaPerformanceClass")),
-            "sdk_int": safe_int(_maybe_dict_value(device_signals, "sdkInt")),
-            "thermal_state": safe_str(_maybe_dict_value(device_signals, "thermalState")),
-            "thermal_state_level": safe_int(_maybe_dict_value(device_signals, "thermalStateLevel")),
-            "is_low_power_mode_enabled": normalize_bool(
-                _maybe_dict_value(device_signals, "isLowPowerModeEnabled")
-            ),
-            "memory_pressure_state": safe_str(_maybe_dict_value(device_signals, "memoryPressureState")),
-            "memory_pressure_level": safe_int(_maybe_dict_value(device_signals, "memoryPressureLevel")),
+            "sdk_int": safe_int(sdk_int_raw),
+            "_sdk_int_raw": sdk_int_raw,
+            "thermal_state": safe_str(thermal_state_raw),
+            "_thermal_state_raw": thermal_state_raw,
+            "thermal_state_level": safe_int(thermal_state_level_raw),
+            "_thermal_state_level_raw": thermal_state_level_raw,
+            "is_low_power_mode_enabled": normalize_bool(is_low_power_mode_enabled_raw),
+            "_is_low_power_mode_enabled_raw": is_low_power_mode_enabled_raw,
+            "memory_pressure_state": safe_str(memory_pressure_state_raw),
+            "_memory_pressure_state_raw": memory_pressure_state_raw,
+            "memory_pressure_level": safe_int(memory_pressure_level_raw),
+            "_memory_pressure_level_raw": memory_pressure_level_raw,
             "frame_drop_state": safe_str(_maybe_dict_value(device_signals, "frameDropState")),
             "frame_drop_level": safe_int(_maybe_dict_value(device_signals, "frameDropLevel")),
             "frame_drop_rate": safe_float(_maybe_dict_value(device_signals, "frameDropRate")),
@@ -604,16 +798,22 @@ class DiagnosticsAnalyzer:
                     source_type="log-session",
                     schema_name="",
                     schema_version=None,
+                    schema_version_raw=None,
                     report_id="",
+                    report_id_raw=None,
                     report_source="",
+                    report_source_raw=None,
                     report_status="ok",
                     generated_at=safe_str(latest.get("timestamp")),
+                    generated_at_raw=latest.get("timestamp"),
                     initializing="false",
                     decision=latest.get("_decision"),
                     top_level_error="",
                     recent_structured_log_count=0,
                     upload_probe=None,
                     session_id=session_id,
+                    service_session_id_raw=None,
+                    report_sequence_raw=None,
                 )
             )
         self.session_rows.extend(derived_rows)
@@ -893,6 +1093,559 @@ def _is_within(path: Path, parent: Path) -> bool:
         return False
 
 
+def android_report_gate_issues(analyzer: DiagnosticsAnalyzer) -> list[str]:
+    issues: list[str] = []
+    if analyzer.issues:
+        issues.append(f"parse_issues: {len(analyzer.issues)} parse issue(s) found.")
+
+    non_performance_rows = [
+        row
+        for row in analyzer.session_rows
+        if row.get("source_type") != "performance-report"
+    ]
+    for row in non_performance_rows:
+        source_ref = safe_str(row.get("source_ref")) or "<unknown>"
+        source_type = safe_str(row.get("source_type")) or "<missing>"
+        issues.append(
+            f"{source_ref}: unexpected session source_type={source_type}; "
+            "android-report-gate inputs must be V1 performance reports only."
+        )
+
+    performance_rows = [
+        row for row in analyzer.session_rows if row.get("source_type") == "performance-report"
+    ]
+    if not performance_rows:
+        issues.append("no_performance_report: no performance-report session rows found.")
+        return issues
+
+    report_id_sources: dict[str, list[str]] = {}
+    session_sequence_sources: dict[tuple[str, int], list[str]] = {}
+    for row in performance_rows:
+        source_ref = safe_str(row.get("source_ref")) or "<unknown>"
+        report_id = safe_str(row.get("report_id"))
+        if report_id:
+            report_id_sources.setdefault(report_id, []).append(source_ref)
+        session_id = safe_str(row.get("session_id"))
+        report_sequence = safe_int(row.get("report_sequence"))
+        if session_id and report_sequence is not None:
+            session_sequence_sources.setdefault(
+                (session_id, report_sequence),
+                [],
+            ).append(source_ref)
+    for report_id, source_refs in report_id_sources.items():
+        if len(source_refs) > 1:
+            issues.append(
+                f"duplicate_report_id: report_id={report_id} appears in "
+                f"{len(source_refs)} performance reports: {', '.join(source_refs)}."
+            )
+    for (session_id, report_sequence), source_refs in session_sequence_sources.items():
+        if len(source_refs) > 1:
+            issues.append(
+                "duplicate_report_sequence: "
+                f"service_session_id={session_id} report_sequence={report_sequence} "
+                f"appears in {len(source_refs)} performance reports: "
+                f"{', '.join(source_refs)}."
+            )
+
+    for row in performance_rows:
+        source_ref = safe_str(row.get("source_ref")) or "<unknown>"
+        if row.get("schema_name") != PERFORMANCE_REPORT_SCHEMA_NAME:
+            issues.append(
+                f"{source_ref}: expected schema_name={PERFORMANCE_REPORT_SCHEMA_NAME}, "
+                f"got {safe_str(row.get('schema_name')) or '<missing>'}."
+            )
+        schema_version_raw = row.get("_schema_version_raw")
+        if (
+            isinstance(schema_version_raw, bool)
+            or not isinstance(schema_version_raw, int)
+            or schema_version_raw != 1
+        ):
+            issues.append(
+                f"{source_ref}: expected schema_version=1, "
+                f"got {gate_value_text(schema_version_raw)}."
+            )
+        if row.get("report_status") != "ok":
+            issues.append(
+                f"{source_ref}: expected report_status=ok, "
+                f"got {safe_str(row.get('report_status')) or '<missing>'}."
+            )
+        for field in ANDROID_REPORT_GATE_REQUIRED_FIELDS:
+            if row.get(field) in (None, ""):
+                issues.append(f"{source_ref}: missing required field {field}.")
+        for field, row_key, raw_key in (
+            ("report_id", "report_id", "_report_id_raw"),
+            ("report_source", "report_source", "_report_source_raw"),
+            ("session_id", "session_id", "_service_session_id_raw"),
+            ("device_model", "device_model", "_device_model_raw"),
+            ("os_version", "os_version", "_os_version_raw"),
+        ):
+            raw_value = row.get(raw_key)
+            if row.get(row_key) not in (None, "") and not is_non_empty_json_string(
+                raw_value
+            ):
+                issues.append(
+                    f"{source_ref}: expected {field} to be a non-empty JSON string, "
+                    f"got {gate_value_text(raw_value)}."
+                )
+        for field, raw_key in (
+            ("generated_at", "_generated_at_raw"),
+            ("decided_at", "_decided_at_raw"),
+        ):
+            raw_value = row.get(raw_key)
+            if row.get(field) not in (None, "") and not is_non_empty_json_string(
+                raw_value
+            ):
+                issues.append(
+                    f"{source_ref}: expected {field} to be a non-empty JSON string, "
+                    f"got {gate_value_text(raw_value)}."
+                )
+        for field in ("generated_at", "decided_at"):
+            if row.get(field) not in (None, "") and not is_iso_datetime(row.get(field)):
+                issues.append(
+                    f"{source_ref}: expected {field} to be an ISO-8601 timestamp, "
+                    f"got {safe_str(row.get(field))}."
+                )
+        if row.get("generated_at") not in (None, "") and not is_utc_iso_datetime(
+            row.get("generated_at")
+        ):
+            issues.append(
+                f"{source_ref}: expected generated_at to be an ISO-8601 UTC timestamp, "
+                f"got {safe_str(row.get('generated_at'))}."
+            )
+        generated_at = parse_iso_datetime(row.get("generated_at"))
+        decided_at = parse_iso_datetime(row.get("decided_at"))
+        if (
+            generated_at is not None
+            and decided_at is not None
+            and generated_at.tzinfo is not None
+            and decided_at.tzinfo is not None
+            and generated_at < decided_at
+        ):
+            issues.append(
+                f"{source_ref}: expected generated_at to be at or after decided_at, "
+                f"got generated_at={safe_str(row.get('generated_at'))} "
+                f"decided_at={safe_str(row.get('decided_at'))}."
+            )
+        for field, row_key, raw_key in (
+            ("tier", "tier", "_tier_raw"),
+            ("confidence", "confidence", "_confidence_raw"),
+            ("runtime_status", "runtime_status", "_runtime_status_raw"),
+            ("platform", "platform", "_platform_raw"),
+            (
+                "memory_pressure_state",
+                "memory_pressure_state",
+                "_memory_pressure_state_raw",
+            ),
+        ):
+            raw_value = row.get(raw_key)
+            if row.get(row_key) not in (None, "") and not is_non_empty_json_string(
+                raw_value
+            ):
+                issues.append(
+                    f"{source_ref}: expected {field} to be a non-empty JSON string, "
+                    f"got {gate_value_text(raw_value)}."
+                )
+        if row.get("tier") and row.get("tier") not in ANDROID_REPORT_GATE_TIERS:
+            issues.append(
+                f"{source_ref}: unexpected tier={safe_str(row.get('tier'))}."
+            )
+        if (
+            row.get("confidence")
+            and row.get("confidence") not in ANDROID_REPORT_GATE_CONFIDENCES
+        ):
+            issues.append(
+                f"{source_ref}: unexpected confidence={safe_str(row.get('confidence'))}."
+            )
+        if (
+            row.get("runtime_status")
+            and row.get("runtime_status") not in ANDROID_REPORT_GATE_RUNTIME_STATUSES
+        ):
+            issues.append(
+                f"{source_ref}: unexpected runtime_status={safe_str(row.get('runtime_status'))}."
+            )
+        for field, raw_key in (
+            ("report_sequence", "_report_sequence_raw"),
+            ("total_ram_bytes", "_total_ram_bytes_raw"),
+            ("sdk_int", "_sdk_int_raw"),
+            ("memory_pressure_level", "_memory_pressure_level_raw"),
+        ):
+            raw_value = row.get(raw_key)
+            if raw_value is not None and not is_json_int(raw_value):
+                issues.append(
+                    f"{source_ref}: expected {field} to be a JSON integer, "
+                    f"got {gate_value_text(raw_value)}."
+                )
+        for field, raw_key in (
+            ("is_low_ram_device", "_is_low_ram_device_raw"),
+            ("is_low_power_mode_enabled", "_is_low_power_mode_enabled_raw"),
+        ):
+            raw_value = row.get(raw_key)
+            if raw_value is not None and not is_json_bool(raw_value):
+                issues.append(
+                    f"{source_ref}: expected {field} to be a JSON boolean, "
+                    f"got {gate_value_text(raw_value)}."
+                )
+        total_ram_bytes = safe_int(row.get("total_ram_bytes"))
+        report_sequence = safe_int(row.get("report_sequence"))
+        if report_sequence is not None and report_sequence <= 0:
+            issues.append(
+                f"{source_ref}: expected report_sequence to be greater than 0, got {report_sequence}."
+            )
+        report_id = safe_str(row.get("report_id"))
+        session_id = safe_str(row.get("session_id"))
+        if report_id and session_id and report_sequence is not None:
+            expected_report_id = f"{session_id}-report-{report_sequence}"
+            if report_id != expected_report_id:
+                issues.append(
+                    f"{source_ref}: expected report_id={expected_report_id} "
+                    f"from service session and report_sequence, got {report_id}."
+                )
+        if total_ram_bytes is not None and total_ram_bytes <= 0:
+            issues.append(
+                f"{source_ref}: expected total_ram_bytes to be greater than 0, got {total_ram_bytes}."
+            )
+        if row.get("platform") and row.get("platform") != "android":
+            issues.append(
+                f"{source_ref}: expected platform=android, got {safe_str(row.get('platform'))}."
+            )
+        sdk_int = safe_int(row.get("sdk_int"))
+        if sdk_int is not None and sdk_int <= 0:
+            issues.append(f"{source_ref}: expected sdk_int to be greater than 0, got {sdk_int}.")
+        memory_pressure_state = safe_str(row.get("memory_pressure_state"))
+        if (
+            memory_pressure_state
+            and memory_pressure_state not in ANDROID_REPORT_GATE_MEMORY_PRESSURE_STATES
+        ):
+            issues.append(
+                f"{source_ref}: unexpected memory_pressure_state={memory_pressure_state}."
+            )
+        memory_pressure_level = safe_int(row.get("memory_pressure_level"))
+        if (
+            memory_pressure_level is not None
+            and memory_pressure_level not in ANDROID_REPORT_GATE_MEMORY_PRESSURE_LEVELS
+        ):
+            issues.append(
+                f"{source_ref}: unexpected memory_pressure_level={memory_pressure_level}."
+            )
+        if sdk_int is not None and sdk_int >= 29:
+            for field in ("thermal_state", "thermal_state_level"):
+                if row.get(field) in (None, ""):
+                    issues.append(
+                        f"{source_ref}: missing required field {field} for Android SDK {sdk_int}."
+                    )
+            thermal_state = safe_str(row.get("thermal_state"))
+            thermal_state_raw = row.get("_thermal_state_raw")
+            if thermal_state and not is_non_empty_json_string(thermal_state_raw):
+                issues.append(
+                    f"{source_ref}: expected thermal_state to be a non-empty JSON string, "
+                    f"got {gate_value_text(thermal_state_raw)}."
+                )
+            if thermal_state and thermal_state not in ANDROID_REPORT_GATE_THERMAL_STATES:
+                issues.append(f"{source_ref}: unexpected thermal_state={thermal_state}.")
+            thermal_state_level_raw = row.get("_thermal_state_level_raw")
+            if (
+                thermal_state_level_raw is not None
+                and not is_json_int(thermal_state_level_raw)
+            ):
+                issues.append(
+                    f"{source_ref}: expected thermal_state_level to be a JSON integer, "
+                    f"got {gate_value_text(thermal_state_level_raw)}."
+                )
+            thermal_state_level = safe_int(row.get("thermal_state_level"))
+            if (
+                thermal_state_level is not None
+                and thermal_state_level not in ANDROID_REPORT_GATE_THERMAL_LEVELS
+            ):
+                issues.append(
+                    f"{source_ref}: unexpected thermal_state_level={thermal_state_level}."
+                )
+        if row.get("is_fallback") == "true":
+            issues.append(f"{source_ref}: fallback decision observed.")
+
+    return issues
+
+
+def android_report_gate_status(issues: list[str]) -> str:
+    return ANDROID_REPORT_GATE_PASS_STATUS if not issues else ANDROID_REPORT_GATE_FAIL_STATUS
+
+
+def write_android_report_gate(
+    output_dir: Path,
+    analyzer: DiagnosticsAnalyzer,
+    issues: list[str],
+) -> None:
+    performance_rows = [
+        row for row in analyzer.session_rows if row.get("source_type") == "performance-report"
+    ]
+    performance_count = len(performance_rows)
+    status = android_report_gate_status(issues)
+    summary_values = {
+        ANDROID_REPORT_GATE_SUMMARY_STATUS_FIELD: status,
+        ANDROID_REPORT_GATE_SUMMARY_ISSUE_COUNT_FIELD: str(len(issues)),
+        ANDROID_REPORT_GATE_SUMMARY_FILES_SCANNED_FIELD: str(analyzer.files_scanned),
+        ANDROID_REPORT_GATE_SUMMARY_PERFORMANCE_ROWS_FIELD: str(performance_count),
+        ANDROID_REPORT_GATE_SUMMARY_SESSION_ROWS_FIELD: str(len(analyzer.session_rows)),
+        ANDROID_REPORT_GATE_SUMMARY_PARSE_ISSUES_FIELD: str(len(analyzer.issues)),
+    }
+    lines = [
+        "# Android Report Gate",
+        "",
+        *[
+            f"- {label}: {summary_values[summary_key]}"
+            for label, summary_key, _issue_key in ANDROID_REPORT_GATE_HEADER_FIELDS
+        ],
+        "",
+        ANDROID_REPORT_GATE_SUMMARY_HEADING,
+        "",
+        ANDROID_REPORT_GATE_SUMMARY_CODE_FENCE_START,
+        *[
+            f"{field}={summary_values[field]}"
+            for field in ANDROID_REPORT_GATE_SUMMARY_FIELDS
+        ],
+        ANDROID_REPORT_GATE_SUMMARY_CODE_FENCE_END,
+        "",
+        ANDROID_REPORT_GATE_CHECKS_HEADING,
+        "",
+        *ANDROID_REPORT_GATE_CHECK_LINES,
+        "",
+        ANDROID_REPORT_GATE_PERFORMANCE_REPORTS_HEADING,
+        "",
+    ]
+    if performance_rows:
+        lines.extend(
+            [
+                _markdown_table_header(
+                    ANDROID_REPORT_GATE_PERFORMANCE_REPORT_COLUMNS,
+                ),
+                _markdown_table_divider(
+                    ANDROID_REPORT_GATE_PERFORMANCE_REPORT_COLUMNS,
+                ),
+            ]
+        )
+        for row in performance_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        markdown_cell(row.get("source_ref")),
+                        markdown_cell(row.get("report_id")),
+                        markdown_cell(row.get("report_source")),
+                        markdown_cell(row.get("session_id")),
+                        markdown_cell(row.get("report_sequence")),
+                        markdown_cell(row.get("tier")),
+                        markdown_cell(row.get("confidence")),
+                        markdown_cell(row.get("runtime_status")),
+                        markdown_cell(row.get("generated_at")),
+                        markdown_cell(row.get("decided_at")),
+                    ]
+                )
+                + " |"
+            )
+        lines.extend(
+            [
+                "",
+                ANDROID_REPORT_GATE_ANDROID_SIGNALS_HEADING,
+                "",
+                _markdown_table_header(
+                    ANDROID_REPORT_GATE_ANDROID_SIGNAL_COLUMNS,
+                ),
+                _markdown_table_divider(
+                    ANDROID_REPORT_GATE_ANDROID_SIGNAL_COLUMNS,
+                ),
+            ]
+        )
+        for row in performance_rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        markdown_cell(row.get("report_id")),
+                        markdown_cell(row.get("platform")),
+                        markdown_cell(row.get("device_model")),
+                        markdown_cell(row.get("os_version")),
+                        markdown_cell(row.get("sdk_int")),
+                        markdown_cell(row.get("total_ram_bytes")),
+                        markdown_cell(row.get("is_low_ram_device")),
+                        markdown_cell(row.get("is_low_power_mode_enabled")),
+                        markdown_cell(row.get("memory_pressure_state")),
+                        markdown_cell(row.get("memory_pressure_level")),
+                        markdown_cell(row.get("thermal_state")),
+                        markdown_cell(row.get("thermal_state_level")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("- No performance report rows.")
+    lines.extend(
+        [
+            "",
+            ANDROID_REPORT_GATE_REPORT_FIELD_CHECK_HEADING,
+            "",
+        ]
+    )
+    if performance_rows:
+        for row in performance_rows:
+            lines.extend(_android_report_field_check_lines(row))
+    else:
+        lines.append("- No performance report rows.")
+    lines.extend(
+        [
+            "",
+            ANDROID_REPORT_GATE_IDENTITY_CHECKLIST_HEADING,
+            "",
+        ]
+    )
+    lines.extend(_android_report_identity_checklist_lines(analyzer, performance_rows))
+    lines.extend(
+        [
+            "",
+            ANDROID_REPORT_GATE_ISSUES_HEADING,
+            "",
+        ]
+    )
+    if issues:
+        lines.extend(f"- {issue}" for issue in issues)
+    else:
+        lines.append(ANDROID_REPORT_GATE_NO_ISSUES_LINE)
+    (output_dir / ANDROID_REPORT_GATE_MARKDOWN_FILE_NAME).write_text(
+        "\n".join(lines) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _android_report_field_check_lines(row: dict[str, Any]) -> list[str]:
+    values = [
+        row.get("schema_name"),
+        row.get("schema_version"),
+        row.get("report_id"),
+        row.get("generated_at"),
+        row.get("report_source"),
+        row.get("session_id"),
+        row.get("report_sequence"),
+        row.get("tier"),
+        row.get("confidence"),
+        row.get("decided_at"),
+        row.get("platform"),
+        row.get("device_model"),
+        row.get("os_version"),
+        row.get("total_ram_bytes"),
+        row.get("is_low_ram_device"),
+        row.get("sdk_int"),
+        row.get("thermal_state"),
+        row.get("thermal_state_level"),
+        row.get("is_low_power_mode_enabled"),
+        row.get("memory_pressure_state"),
+        row.get("memory_pressure_level"),
+        row.get("runtime_status"),
+    ]
+    return [
+        f"### {markdown_inline(row.get('report_id')) or 'Report'}",
+        "",
+        *[
+            f"- {label}: {markdown_inline(value)}"
+            for label, value in zip(ANDROID_REPORT_GATE_FIELD_CHECK_LABELS, values)
+        ],
+        "",
+    ]
+
+
+def _markdown_table_header(columns: list[str]) -> str:
+    return "| " + " | ".join(columns) + " |"
+
+
+def _markdown_table_divider(columns: list[str]) -> str:
+    return "| " + " | ".join("---" for _ in columns) + " |"
+
+
+def _android_report_identity_checklist_lines(
+    analyzer: DiagnosticsAnalyzer,
+    performance_rows: list[dict[str, Any]],
+) -> list[str]:
+    def yes_no(value: bool) -> str:
+        return "yes" if value else "no"
+
+    def all_performance_rows(predicate: Any) -> bool:
+        return bool(performance_rows) and all(predicate(row) for row in performance_rows)
+
+    schema_version_ok = all_performance_rows(
+        lambda row: row.get("_schema_version_raw") == 1,
+    )
+    generated_at_ok = all_performance_rows(
+        lambda row: is_utc_iso_datetime(row.get("_generated_at_raw")),
+    )
+    decided_at_ok = all_performance_rows(
+        lambda row: is_iso_datetime(row.get("_decided_at_raw")),
+    )
+    timestamp_order_ok = all_performance_rows(_generated_at_not_before_decided_at)
+    service_session_ok = all_performance_rows(
+        lambda row: is_non_empty_json_string(row.get("_service_session_id_raw")),
+    )
+    report_sequence_ok = all_performance_rows(
+        lambda row: is_json_int(row.get("_report_sequence_raw"))
+        and row.get("_report_sequence_raw") > 0,
+    )
+    report_id_match_ok = all_performance_rows(_report_id_matches_session_sequence)
+    report_ids = [
+        row.get("report_id")
+        for row in performance_rows
+        if is_non_empty_json_string(row.get("_report_id_raw"))
+    ]
+    service_sequences = [
+        (row.get("session_id"), row.get("report_sequence"))
+        for row in performance_rows
+        if row.get("session_id") and row.get("report_sequence") is not None
+    ]
+    unique_report_ids_ok = bool(performance_rows) and len(report_ids) == len(set(report_ids))
+    unique_service_sequence_ok = bool(performance_rows) and len(service_sequences) == len(
+        set(service_sequences)
+    )
+    pure_gate_input_ok = (
+        bool(performance_rows)
+        and not analyzer.issues
+        and all(
+            row.get("source_type") == "performance-report"
+            for row in analyzer.session_rows
+        )
+    )
+
+    checks = [
+        schema_version_ok,
+        generated_at_ok,
+        decided_at_ok,
+        timestamp_order_ok,
+        service_session_ok,
+        report_sequence_ok,
+        report_id_match_ok,
+        unique_report_ids_ok,
+        unique_service_sequence_ok,
+        pure_gate_input_ok,
+    ]
+    return [
+        f"- {label}: {yes_no(check)}"
+        for label, check in zip(IDENTITY_CHECKLIST_LABELS, checks)
+    ]
+
+
+def _generated_at_not_before_decided_at(row: dict[str, Any]) -> bool:
+    generated_at = parse_iso_datetime(row.get("_generated_at_raw"))
+    decided_at = parse_iso_datetime(row.get("_decided_at_raw"))
+    if generated_at is None or decided_at is None:
+        return False
+    if generated_at.tzinfo is None or decided_at.tzinfo is None:
+        return True
+    return generated_at >= decided_at
+
+
+def _report_id_matches_session_sequence(row: dict[str, Any]) -> bool:
+    report_id = row.get("report_id")
+    session_id = row.get("session_id")
+    report_sequence = row.get("report_sequence")
+    if not report_id or not session_id or report_sequence is None:
+        return False
+    return report_id == f"{session_id}-report-{report_sequence}"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Analyze Flutter performance tier diagnostics JSON and structured logs."
@@ -918,6 +1671,15 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="Top-N rows to include in the Markdown summary sections.",
     )
+    parser.add_argument(
+        "--android-report-gate",
+        action="store_true",
+        help=(
+            "Return non-zero unless inputs contain at least one valid V1 Android "
+            "PerformanceReport with required report, decision, runtime, and "
+            "device signal fields."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -932,12 +1694,25 @@ def main() -> int:
     analyzer = DiagnosticsAnalyzer(prefix=args.prefix, top_n=max(args.top, 1))
     analyzer.ingest_files(files)
     analyzer.write_outputs(output_dir)
+    gate_issues: list[str] = []
+    if args.android_report_gate:
+        gate_issues = android_report_gate_issues(analyzer)
+        write_android_report_gate(output_dir, analyzer, gate_issues)
+        gate_status = android_report_gate_status(gate_issues)
 
     print(f"Analyzed {analyzer.files_scanned} files.")
     print(f"Session rows: {len(analyzer.session_rows)}")
     print(f"Structured log events: {len(analyzer.event_rows)}")
     print(f"Parse issues: {len(analyzer.issues)}")
+    if args.android_report_gate:
+        print(
+            "Android report gate: "
+            f"{gate_status}"
+            f" ({len(gate_issues)} issue(s))"
+        )
     print(f"Output directory: {output_dir}")
+    if gate_issues:
+        return 2
     return 0
 
 

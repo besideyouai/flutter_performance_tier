@@ -4,17 +4,25 @@ import 'package:flutter/foundation.dart';
 
 import 'tier_decision.dart';
 
+/// Versioned report payload used by the Android device-to-host report loop.
 @immutable
 class PerformanceReport {
   PerformanceReport({
-    required this.reportId,
-    required this.generatedAt,
-    required this.source,
+    required String reportId,
+    required DateTime generatedAt,
+    required String source,
     required this.decision,
     Map<String, Object?> metadata = const <String, Object?>{},
-    this.schemaName = schemaNameV1,
-    this.schemaVersion = currentSchemaVersion,
-  }) : metadata = Map<String, Object?>.unmodifiable(metadata);
+    String schemaName = schemaNameV1,
+    int schemaVersion = currentSchemaVersion,
+  }) : schemaName = _requiredSchemaName(schemaName),
+       schemaVersion = _requiredSchemaVersion(schemaVersion),
+       reportId = _requiredNonBlankString(reportId, 'reportId'),
+       generatedAt = _validatedGeneratedAt(generatedAt, decision),
+       source = _requiredNonBlankString(source, 'source'),
+       metadata = Map<String, Object?>.unmodifiable(
+         _validatedMetadata(metadata, reportId),
+       );
 
   factory PerformanceReport.fromDecision({
     required TierDecision decision,
@@ -37,6 +45,22 @@ class PerformanceReport {
       'flutter_performance_tier.performance_report';
   static const int currentSchemaVersion = 1;
   static const String defaultSource = 'DefaultPerformanceTierService';
+
+  /// Builds the default service-owned report id for a session and sequence.
+  ///
+  /// This is the identity shape expected by the default service, report model
+  /// metadata validation, and Android report gate.
+  static String buildServiceReportId({
+    required String serviceSessionId,
+    required int reportSequence,
+  }) {
+    final sessionId = _requiredNonBlankString(
+      serviceSessionId,
+      'serviceSessionId',
+    );
+    final sequence = _requiredPositiveReportSequence(reportSequence);
+    return '$sessionId-report-$sequence';
+  }
 
   final String schemaName;
   final int schemaVersion;
@@ -108,6 +132,7 @@ class PerformanceReport {
   static String _threeDigits(int value) => value.toString().padLeft(3, '0');
 }
 
+/// Native or backing-store metadata returned after a report write.
 @immutable
 class PerformanceReportWriteResult {
   const PerformanceReportWriteResult({
@@ -128,7 +153,7 @@ class PerformanceReportWriteResult {
       fileName: _requiredString(map, 'fileName'),
       relativePath: _requiredString(map, 'relativePath'),
       absolutePath: _asString(map['absolutePath']),
-      bytes: _requiredInt(map, 'bytes'),
+      bytes: _requiredPositiveInt(map, 'bytes'),
       writtenAt:
           _asEpochMillisDateTime(map['writtenAtEpochMs']) ??
           _asIsoDateTime(map['writtenAt']),
@@ -155,6 +180,7 @@ class PerformanceReportWriteResult {
   }
 }
 
+/// Metadata for a report file that can be pulled from the backing store.
 @immutable
 class PerformanceReportFile {
   const PerformanceReportFile({
@@ -170,7 +196,7 @@ class PerformanceReportFile {
       fileName: _requiredString(map, 'fileName'),
       relativePath: _requiredString(map, 'relativePath'),
       absolutePath: _asString(map['absolutePath']),
-      bytes: _requiredInt(map, 'bytes'),
+      bytes: _requiredPositiveInt(map, 'bytes'),
       modifiedAt:
           _asEpochMillisDateTime(map['modifiedAtEpochMs']) ??
           _asIsoDateTime(map['modifiedAt']),
@@ -203,16 +229,110 @@ String _requiredString(Map<String, dynamic> map, String key) {
   throw FormatException('Performance report native result missing "$key".');
 }
 
-int _requiredInt(Map<String, dynamic> map, String key) {
+int _requiredPositiveInt(Map<String, dynamic> map, String key) {
   final value = _asInt(map[key]);
-  if (value != null) {
+  if (value != null && value > 0) {
     return value;
   }
-  throw FormatException('Performance report native result missing "$key".');
+  throw FormatException(
+    'Performance report native result missing positive integer "$key".',
+  );
+}
+
+String _requiredNonBlankString(String value, String fieldName) {
+  if (value.trim().isNotEmpty) {
+    return value;
+  }
+  throw ArgumentError.value(value, fieldName, 'Must be a non-empty string.');
+}
+
+String _requiredSchemaName(String value) {
+  if (value == PerformanceReport.schemaNameV1) {
+    return value;
+  }
+  throw ArgumentError.value(
+    value,
+    'schemaName',
+    'Must be ${PerformanceReport.schemaNameV1}.',
+  );
+}
+
+int _requiredSchemaVersion(int value) {
+  if (value == PerformanceReport.currentSchemaVersion) {
+    return value;
+  }
+  throw ArgumentError.value(
+    value,
+    'schemaVersion',
+    'Must be ${PerformanceReport.currentSchemaVersion}.',
+  );
+}
+
+DateTime _validatedGeneratedAt(DateTime generatedAt, TierDecision decision) {
+  final utcGeneratedAt = generatedAt.toUtc();
+  final utcDecidedAt = decision.decidedAt.toUtc();
+  if (utcGeneratedAt.isBefore(utcDecidedAt)) {
+    throw ArgumentError.value(
+      generatedAt,
+      'generatedAt',
+      'Must be at or after decision.decidedAt.',
+    );
+  }
+  return utcGeneratedAt;
+}
+
+Map<String, Object?> _validatedMetadata(
+  Map<String, Object?> metadata,
+  String reportId,
+) {
+  final hasServiceSessionId = metadata.containsKey('serviceSessionId');
+  final hasReportSequence = metadata.containsKey('reportSequence');
+  if (!hasServiceSessionId && !hasReportSequence) {
+    return metadata;
+  }
+  final serviceSessionId = metadata['serviceSessionId'];
+  if (serviceSessionId is! String || serviceSessionId.trim().isEmpty) {
+    throw ArgumentError.value(
+      serviceSessionId,
+      'metadata.serviceSessionId',
+      'Must be a non-empty string when report identity metadata is present.',
+    );
+  }
+  final reportSequence = metadata['reportSequence'];
+  if (reportSequence is! int || reportSequence <= 0) {
+    throw ArgumentError.value(
+      reportSequence,
+      'metadata.reportSequence',
+      'Must be a positive integer when report identity metadata is present.',
+    );
+  }
+  final expectedReportId = PerformanceReport.buildServiceReportId(
+    serviceSessionId: serviceSessionId,
+    reportSequence: reportSequence,
+  );
+  if (reportId != expectedReportId) {
+    throw ArgumentError.value(
+      reportId,
+      'reportId',
+      'Must match metadata identity: $expectedReportId.',
+    );
+  }
+  return metadata;
+}
+
+int _requiredPositiveReportSequence(int value) {
+  if (value > 0) {
+    return value;
+  }
+  throw ArgumentError.value(
+    value,
+    'reportSequence',
+    'Must be greater than zero.',
+  );
 }
 
 String? _asString(Object? value) {
-  if (value is String && value.isNotEmpty) {
+  if (value is String && value.trim().isNotEmpty) {
     return value;
   }
   return null;
@@ -221,12 +341,6 @@ String? _asString(Object? value) {
 int? _asInt(Object? value) {
   if (value is int) {
     return value;
-  }
-  if (value is num) {
-    return value.toInt();
-  }
-  if (value is String) {
-    return int.tryParse(value);
   }
   return null;
 }

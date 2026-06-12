@@ -147,7 +147,10 @@ class DefaultPerformanceTierService implements PerformanceTierService {
     final report = PerformanceReport.fromDecision(
       decision: decision,
       source: source,
-      reportId: '$_sessionId-report-$reportSequence',
+      reportId: PerformanceReport.buildServiceReportId(
+        serviceSessionId: _sessionId,
+        reportSequence: reportSequence,
+      ),
       metadata: <String, Object?>{
         'serviceSessionId': _sessionId,
         'reportSequence': reportSequence,

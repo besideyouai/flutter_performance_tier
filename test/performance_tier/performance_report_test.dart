@@ -24,21 +24,25 @@ void main() {
         decision: decision,
         generatedAt: DateTime.utc(2026, 6, 11, 8, 2, 3, 4),
         source: 'unit-test',
-        reportId: 'report/unit:test',
-        metadata: const <String, Object?>{'serviceSessionId': 'session-1'},
+        reportId: 'session-1-report-1',
+        metadata: const <String, Object?>{
+          'serviceSessionId': 'session-1',
+          'reportSequence': 1,
+        },
       );
       final map = jsonDecode(report.toJson()) as Map<String, dynamic>;
 
       expect(map['schemaName'], PerformanceReport.schemaNameV1);
       expect(map['schemaVersion'], PerformanceReport.currentSchemaVersion);
-      expect(map['reportId'], 'report/unit:test');
+      expect(map['reportId'], 'session-1-report-1');
       expect(map['generatedAt'], '2026-06-11T08:02:03.004Z');
       expect(map['source'], 'unit-test');
       expect(map['metadata'], containsPair('serviceSessionId', 'session-1'));
+      expect(map['metadata'], containsPair('reportSequence', 1));
       expect(map['decision'], isA<Map<String, Object?>>());
       expect(
         report.defaultFileName,
-        'performance_tier_v1_20260611T080203004Z_report-unit-test.json',
+        'performance_tier_v1_20260611T080203004Z_session-1-report-1.json',
       );
     });
 
@@ -55,7 +59,7 @@ void main() {
       final file = PerformanceReportFile.fromMap(<String, dynamic>{
         'fileName': 'report.json',
         'relativePath': 'files/performance_tier_reports/report.json',
-        'bytes': '42',
+        'bytes': 42,
         'modifiedAtEpochMs': 1781111111000,
       });
 
@@ -96,6 +100,200 @@ void main() {
           'relativePath': 'files/performance_tier_reports/report.json',
         }),
         throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects malformed native metadata values', () {
+      expect(
+        () => PerformanceReportWriteResult.fromMap(<String, dynamic>{
+          'fileName': ' ',
+          'relativePath': 'files/performance_tier_reports/report.json',
+          'bytes': 42,
+        }, reportId: 'fallback-report'),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => PerformanceReportFile.fromMap(<String, dynamic>{
+          'fileName': 'report.json',
+          'relativePath': '\n',
+          'bytes': 42,
+        }),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => PerformanceReportFile.fromMap(<String, dynamic>{
+          'fileName': 'report.json',
+          'relativePath': 'files/performance_tier_reports/report.json',
+          'bytes': 0,
+        }),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        () => PerformanceReportFile.fromMap(<String, dynamic>{
+          'fileName': 'report.json',
+          'relativePath': 'files/performance_tier_reports/report.json',
+          'bytes': '42',
+        }),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('rejects blank report identity fields', () {
+      final decision = TierDecision(
+        tier: TierLevel.t2High,
+        confidence: TierConfidence.high,
+        deviceSignals: DeviceSignals(
+          platform: 'android',
+          collectedAt: DateTime.utc(2026, 6, 11, 8),
+        ),
+      );
+
+      expect(
+        () => PerformanceReport(
+          schemaName: ' ',
+          reportId: 'report-1',
+          generatedAt: DateTime.utc(2026, 6, 11, 8, 2),
+          source: 'unit-test',
+          decision: decision,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport(
+          schemaVersion: 0,
+          reportId: 'report-1',
+          generatedAt: DateTime.utc(2026, 6, 11, 8, 2),
+          source: 'unit-test',
+          decision: decision,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport.fromDecision(decision: decision, reportId: ' '),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport.fromDecision(decision: decision, source: '\n'),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects non-v1 report schema fields', () {
+      final decision = TierDecision(
+        tier: TierLevel.t2High,
+        confidence: TierConfidence.high,
+        deviceSignals: DeviceSignals(
+          platform: 'android',
+          collectedAt: DateTime.utc(2026, 6, 11, 8),
+        ),
+      );
+
+      expect(
+        () => PerformanceReport(
+          schemaName: 'custom.schema',
+          reportId: 'report-1',
+          generatedAt: DateTime.utc(2026, 6, 11, 8, 2),
+          source: 'unit-test',
+          decision: decision,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport(
+          schemaVersion: 2,
+          reportId: 'report-1',
+          generatedAt: DateTime.utc(2026, 6, 11, 8, 2),
+          source: 'unit-test',
+          decision: decision,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('builds service report identity from session and sequence', () {
+      expect(
+        PerformanceReport.buildServiceReportId(
+          serviceSessionId: 'session-1',
+          reportSequence: 3,
+        ),
+        'session-1-report-3',
+      );
+      expect(
+        () => PerformanceReport.buildServiceReportId(
+          serviceSessionId: ' ',
+          reportSequence: 3,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport.buildServiceReportId(
+          serviceSessionId: 'session-1',
+          reportSequence: 0,
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects report timestamp before the decision timestamp', () {
+      final decision = TierDecision(
+        tier: TierLevel.t2High,
+        confidence: TierConfidence.high,
+        deviceSignals: DeviceSignals(
+          platform: 'android',
+          collectedAt: DateTime.utc(2026, 6, 11, 8),
+        ),
+        decidedAt: DateTime.utc(2026, 6, 11, 8, 1),
+      );
+
+      expect(
+        () => PerformanceReport.fromDecision(
+          decision: decision,
+          generatedAt: DateTime.utc(2026, 6, 11, 8),
+          reportId: 'report-1',
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects incomplete or mismatched service identity metadata', () {
+      final decision = TierDecision(
+        tier: TierLevel.t2High,
+        confidence: TierConfidence.high,
+        deviceSignals: DeviceSignals(
+          platform: 'android',
+          collectedAt: DateTime.utc(2026, 6, 11, 8),
+        ),
+      );
+
+      expect(
+        () => PerformanceReport.fromDecision(
+          decision: decision,
+          reportId: 'session-1-report-1',
+          metadata: const <String, Object?>{'serviceSessionId': 'session-1'},
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport.fromDecision(
+          decision: decision,
+          reportId: 'session-1-report-1',
+          metadata: const <String, Object?>{
+            'serviceSessionId': 'session-1',
+            'reportSequence': '1',
+          },
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+      expect(
+        () => PerformanceReport.fromDecision(
+          decision: decision,
+          reportId: 'other-report-1',
+          metadata: const <String, Object?>{
+            'serviceSessionId': 'session-1',
+            'reportSequence': 1,
+          },
+        ),
+        throwsA(isA<ArgumentError>()),
       );
     });
   });

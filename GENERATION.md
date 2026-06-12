@@ -72,7 +72,71 @@ Ignored generated or machine-local outputs include:
 3. Command:
 
 ```bash
-python tool/analyze_diagnostics.py tool/testdata/sample_ai_report.json --output build/diagnostics_analysis_sample
+python3 tool/analyze_diagnostics.py tool/testdata/sample_ai_report.json --output build/diagnostics_analysis_sample
+```
+
+Android report gate smoke:
+
+```bash
+python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_gate_sample --android-report-gate
+```
+
+Analyzer unit tests:
+
+```bash
+python3 tool/analyze_diagnostics_test.py
+```
+
+Evidence validator unit tests:
+
+```bash
+python3 tool/validate_android_report_evidence_test.py
+```
+
+The evidence validator rejects drafts that violate the current evidence
+contract. The recorded host command block must be one `bash` fenced block with
+no placeholders or unexpected commands, must preserve the copied order from the
+example app, and must include start fail-fast, report directory listing, host
+directory preparation, report pull, non-empty file check, analyzer gate failure
+capture, analyzer gate, gate status capture, fail-fast resume, gate Markdown
+print, gate status check, evidence draft builder, and evidence validator stages.
+The gate Markdown file name and required host-command snippets are owned by
+`tool/android_report_evidence_contract.py` and include the analyzer
+`--android-report-gate` option plus the builder `--analysis-output-dir`,
+`--application-id`, `--branch`, `--commit`, and `--output` options.
+
+The validator also requires host commands to reference the same application id,
+report file name, pulled report path, analyzer output directory, and evidence
+file recorded in the evidence. Android Report Gate content must keep the shared
+section order, top status block labels/order, single `text` fenced Gate Summary,
+summary table columns/order, Report Field Check labels/order, Identity Checklist
+labels/order, complete `## Checks`, and an empty PASS `## Issues` section of
+`- None.`. The evidence must remain scoped to one selected safe `.json` report,
+using the filename pattern owned by `tool/android_report_evidence_contract.py`.
+`App used` must choose one of the same contract-owned values. Performance
+Reports, Android Signals, Report Field Check, run context, app-side trigger,
+host outputs, and Result values must agree with each other. The reviewed Result
+section must record `Pass` with failure category `none`.
+
+Evidence draft builder. The application id must be passed explicitly with
+`--application-id`; the builder no longer supplies an implicit example app id.
+Branch and commit are read from git by default; if unavailable, pass
+`--branch <branch>` and `--commit <commit>`. Generated evidence records
+explicit branch / commit in the copied builder command for reproducibility:
+
+```bash
+python3 tool/build_android_report_evidence.py tool/testdata/sample_performance_report.json \
+  --analysis-output-dir build/diagnostics_analysis_gate_sample \
+  --branch codex/android-report-loop \
+  --commit abc1234 \
+  --output build/android_report_loop_evidence_sample.md \
+  --application-id com.example.flutter_performance_tier_example
+```
+
+Evidence draft builder unit tests:
+
+```bash
+python3 tool/build_android_report_evidence_test.py
 ```
 
 4. Codex may run it:
@@ -81,9 +145,14 @@ python tool/analyze_diagnostics.py tool/testdata/sample_ai_report.json --output 
 5. Commit policy:
    - Do not commit generated analysis output unless a task explicitly asks for a
      small, redacted expected-output fixture.
+   - Do not commit generated evidence drafts unless they are the intended
+     redacted real-device goal evidence and are linked from `goal.html`.
 6. Required validation:
    - Parser/analyzer output should match the current report schema expectations
      documented in `TEST.md`.
+   - Generated evidence drafts must pass
+     `tool/validate_android_report_evidence.py` before they are treated as
+     readiness evidence.
 
 ## Command Boundary
 

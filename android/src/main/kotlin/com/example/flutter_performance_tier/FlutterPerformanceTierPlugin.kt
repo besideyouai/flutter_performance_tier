@@ -3,6 +3,7 @@ package com.example.flutter_performance_tier
 import android.app.ActivityManager
 import android.content.Context
 import android.os.Build
+import android.os.PowerManager
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -15,6 +16,7 @@ class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHand
         private const val writePerformanceReportMethod: String = "writePerformanceReport"
         private const val listPerformanceReportsMethod: String = "listPerformanceReports"
         private const val reportsDirectoryName: String = "performance_tier_reports"
+        private const val currentPerformanceReportSchemaVersion: Int = 1
     }
 
     private lateinit var channel: MethodChannel
@@ -42,17 +44,24 @@ class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private fun collectDeviceSignals(): Map<String, Any?> {
         val activityManager =
             applicationContext.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
+        val powerManager =
+            applicationContext.getSystemService(Context.POWER_SERVICE) as? PowerManager
         val memoryInfo = ActivityManager.MemoryInfo()
         activityManager?.getMemoryInfo(memoryInfo)
         val memoryPressureLevel = resolveMemoryPressureLevel(memoryInfo)
+        val thermalStateLevel = resolveThermalStateLevel(powerManager)
 
         return mapOf(
             "platform" to "android",
             "deviceModel" to Build.MODEL.takeIf { it.isNotBlank() },
+            "osVersion" to Build.VERSION.RELEASE.takeIf { it.isNotBlank() },
             "totalRamBytes" to memoryInfo.totalMem.takeIf { it > 0L },
             "isLowRamDevice" to activityManager?.isLowRamDevice,
             "mediaPerformanceClass" to mediaPerformanceClassOrNull(),
             "sdkInt" to Build.VERSION.SDK_INT,
+            "thermalState" to thermalState(thermalStateLevel),
+            "thermalStateLevel" to thermalStateLevel,
+            "isLowPowerModeEnabled" to powerManager?.isPowerSaveMode,
             "memoryPressureState" to memoryPressureState(memoryPressureLevel),
             "memoryPressureLevel" to memoryPressureLevel
         )
@@ -77,6 +86,32 @@ class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHand
         return 0
     }
 
+    private fun resolveThermalStateLevel(powerManager: PowerManager?): Int? {
+        if (powerManager == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return null
+        }
+        return when (powerManager.currentThermalStatus) {
+            PowerManager.THERMAL_STATUS_NONE -> 0
+            PowerManager.THERMAL_STATUS_LIGHT,
+            PowerManager.THERMAL_STATUS_MODERATE -> 1
+            PowerManager.THERMAL_STATUS_SEVERE -> 2
+            PowerManager.THERMAL_STATUS_CRITICAL,
+            PowerManager.THERMAL_STATUS_EMERGENCY,
+            PowerManager.THERMAL_STATUS_SHUTDOWN -> 3
+            else -> null
+        }
+    }
+
+    private fun thermalState(level: Int?): String? {
+        return when (level) {
+            null -> null
+            0 -> "normal"
+            1 -> "fair"
+            2 -> "serious"
+            else -> "critical"
+        }
+    }
+
     private fun memoryPressureState(level: Int): String {
         return when {
             level >= 2 -> "critical"
@@ -89,6 +124,23 @@ class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHand
         val content = call.argument<String>("content")
         val fileName = call.argument<String>("fileName")
         val reportId = call.argument<String>("reportId")
+        val schemaVersion = call.argument<Int>("schemaVersion")
+        if (schemaVersion != currentPerformanceReportSchemaVersion) {
+            result.error(
+                "invalid_report_schema_version",
+                "Performance report schemaVersion must be 1.",
+                schemaVersion
+            )
+            return
+        }
+        if (reportId.isNullOrBlank()) {
+            result.error(
+                "invalid_report_id",
+                "Performance report reportId must be a non-empty string.",
+                null
+            )
+            return
+        }
         if (content.isNullOrBlank()) {
             result.error(
                 "invalid_report_content",
@@ -131,7 +183,7 @@ class FlutterPerformanceTierPlugin : FlutterPlugin, MethodChannel.MethodCallHand
     private fun listPerformanceReports(): List<Map<String, Any?>> {
         val reportsDir = reportsDirectory()
         val reportFiles = reportsDir.listFiles { file ->
-            file.isFile && file.name.endsWith(".json")
+            file.isFile && isSafeReportFileName(file.name)
         } ?: return emptyList()
         return reportFiles
             .sortedByDescending { file -> file.lastModified() }

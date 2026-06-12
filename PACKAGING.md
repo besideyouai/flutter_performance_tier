@@ -92,8 +92,14 @@ id.
 Before sharing Android monitoring artifacts as ready for consumption, collect:
 
 1. Non-device automated test evidence for schema/model/contract changes.
-2. Manual real-device report generation evidence.
-3. Manual `adb` or `@test-android-apps` retrieval evidence.
-4. Parse/analyzer evidence for at least one pulled report.
-5. A documented migration note for every breaking API, channel, storage, or
+2. Manual real-device report generation evidence from the example `Internal Tools`.
+3. Manual `adb` or `@test-android-apps` retrieval evidence for one selected
+   native-style safe `.json` report from `files/performance_tier_reports/`.
+4. Android report gate evidence showing `PASS` for that selected pulled report,
+   with no mixed legacy diagnostics, structured logs, directory-level batch
+   evidence, or unsafe report file names.
+5. Filled goal evidence that validates with
+   `android_report_evidence_status=PASS` from
+   `tool/validate_android_report_evidence.py`.
+6. A documented migration note for every breaking API, channel, storage, or
    report-schema change.

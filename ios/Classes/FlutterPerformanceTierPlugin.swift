@@ -56,6 +56,7 @@ public class FlutterPerformanceTierPlugin: NSObject, FlutterPlugin {
     return [
       "platform": "ios",
       "deviceModel": deviceModelIdentifier(),
+      "osVersion": processInfo.operatingSystemVersionString,
       "totalRamBytes": totalRamBytes,
       "isLowRamDevice": isLowRamDevice,
       "sdkInt": majorVersion,

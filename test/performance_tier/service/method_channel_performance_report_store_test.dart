@@ -69,6 +69,29 @@ void main() {
       expect(store.write(_report()), throwsA(isA<FormatException>()));
     }, skip: kIsWeb);
 
+    test('rejects mismatched native write report id', () async {
+      final channel = const MethodChannel('test/perf_tier/report_mismatch');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall call) async {
+            return <String, Object?>{
+              'reportId': 'other-report',
+              'fileName': 'report.json',
+              'relativePath': 'files/performance_tier_reports/report.json',
+              'bytes': 12,
+            };
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      final store = MethodChannelPerformanceReportStore(
+        methodChannel: channel,
+        targetPlatform: TargetPlatform.android,
+      );
+
+      expect(store.write(_report()), throwsA(isA<FormatException>()));
+    }, skip: kIsWeb);
+
     test('lists reports through the Android method-channel contract', () async {
       final calls = <MethodCall>[];
       final channel = const MethodChannel('test/perf_tier/report_list');
@@ -77,10 +100,24 @@ void main() {
             calls.add(call);
             return <Object?>[
               <String, Object?>{
-                'fileName': 'report-a.json',
-                'relativePath': 'files/performance_tier_reports/report-a.json',
+                'fileName': 'report-old.json',
+                'relativePath':
+                    'files/performance_tier_reports/report-old.json',
                 'bytes': 10,
-                'modifiedAtEpochMs': 1781111111000,
+                'modifiedAtEpochMs': 1781111110000,
+              },
+              <String, Object?>{
+                'fileName': 'report-no-time.json',
+                'relativePath':
+                    'files/performance_tier_reports/report-no-time.json',
+                'bytes': 12,
+              },
+              <String, Object?>{
+                'fileName': 'report-new.json',
+                'relativePath':
+                    'files/performance_tier_reports/report-new.json',
+                'bytes': 20,
+                'modifiedAtEpochMs': 1781111112000,
               },
             ];
           });
@@ -97,8 +134,62 @@ void main() {
 
       expect(calls, hasLength(1));
       expect(calls.single.method, 'listPerformanceReports');
-      expect(reports.single.fileName, 'report-a.json');
-      expect(reports.single.bytes, 10);
+      expect(
+        reports.map((PerformanceReportFile report) => report.fileName),
+        <String>['report-new.json', 'report-old.json', 'report-no-time.json'],
+      );
+      expect(reports.first.bytes, 20);
+    }, skip: kIsWeb);
+
+    test('rejects malformed native list items', () async {
+      final channel = const MethodChannel(
+        'test/perf_tier/report_list_bad_item',
+      );
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall call) async {
+            return <Object?>[
+              <String, Object?>{
+                'fileName': 'report.json',
+                'relativePath': 'files/performance_tier_reports/report.json',
+                'bytes': 10,
+              },
+              'not-a-map',
+            ];
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      final store = MethodChannelPerformanceReportStore(
+        methodChannel: channel,
+        targetPlatform: TargetPlatform.android,
+      );
+
+      expect(store.list(), throwsA(isA<FormatException>()));
+    }, skip: kIsWeb);
+
+    test('rejects native list metadata with non-string keys', () async {
+      final channel = const MethodChannel('test/perf_tier/report_list_bad_key');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(channel, (MethodCall call) async {
+            return <Object?>[
+              <Object?, Object?>{
+                1: 'report.json',
+                'relativePath': 'files/performance_tier_reports/report.json',
+                'bytes': 10,
+              },
+            ];
+          });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(channel, null);
+      });
+      final store = MethodChannelPerformanceReportStore(
+        methodChannel: channel,
+        targetPlatform: TargetPlatform.android,
+      );
+
+      expect(store.list(), throwsA(isA<FormatException>()));
     }, skip: kIsWeb);
 
     test(

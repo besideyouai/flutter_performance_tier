@@ -21,6 +21,35 @@ void main() {
       },
     );
 
+    test(
+      'android native report writer keeps private safe-file boundary',
+      () async {
+        final source = await File(_androidHandlerPath).readAsString();
+
+        expect(source, contains('currentPerformanceReportSchemaVersion'));
+        expect(source, contains('call.argument<Int>("schemaVersion")'));
+        expect(source, contains('invalid_report_schema_version'));
+        expect(source, contains('reportId.isNullOrBlank()'));
+        expect(source, contains('invalid_report_id'));
+        expect(source, contains('invalid_report_content'));
+        expect(source, contains('invalid_report_file_name'));
+        expect(source, contains('isSafeReportFileName'));
+        expect(
+          source,
+          contains('file.isFile && isSafeReportFileName(file.name)'),
+        );
+        expect(source, contains('fileName.endsWith(".json")'));
+        expect(
+          source,
+          contains(
+            "char.isLetterOrDigit() || char == '-' || char == '_' || char == '.'",
+          ),
+        );
+        expect(source, contains('nextAvailableReportFile'));
+        expect(source, contains('writeText(content, Charsets.UTF_8)'));
+      },
+    );
+
     test('ios native handler keeps method-channel contract and keys', () async {
       final source = await File(_iosAppDelegatePath).readAsString();
 
@@ -36,10 +65,14 @@ void main() {
       final signals = DeviceSignals.fromMap(<String, Object?>{
         'platform': 'android',
         'deviceModel': 'Pixel 8 Pro',
+        'osVersion': '15',
         'totalRamBytes': 8 * _bytesPerGb,
         'isLowRamDevice': false,
         'mediaPerformanceClass': 13,
         'sdkInt': 35,
+        'thermalState': 'fair',
+        'thermalStateLevel': 1,
+        'isLowPowerModeEnabled': true,
         'memoryPressureState': 'moderate',
         'memoryPressureLevel': 1,
         'frameDropState': 'moderate',
@@ -51,14 +84,15 @@ void main() {
 
       expect(signals.platform, 'android');
       expect(signals.deviceModel, 'Pixel 8 Pro');
+      expect(signals.osVersion, '15');
       expect(signals.totalRamBytes, 8 * _bytesPerGb);
       expect(signals.totalRamMb, 8192);
       expect(signals.isLowRamDevice, isFalse);
       expect(signals.mediaPerformanceClass, 13);
       expect(signals.sdkInt, 35);
-      expect(signals.thermalState, isNull);
-      expect(signals.thermalStateLevel, isNull);
-      expect(signals.isLowPowerModeEnabled, isNull);
+      expect(signals.thermalState, 'fair');
+      expect(signals.thermalStateLevel, 1);
+      expect(signals.isLowPowerModeEnabled, isTrue);
       expect(signals.memoryPressureState, 'moderate');
       expect(signals.memoryPressureLevel, 1);
       expect(signals.frameDropState, 'moderate');
@@ -76,6 +110,7 @@ void main() {
         final signals = DeviceSignals.fromMap(<String, Object?>{
           'platform': 'ios',
           'deviceModel': 'iPhone16,2',
+          'osVersion': 'iOS 18.0',
           'totalRamBytes': '${6 * _bytesPerGb}',
           'isLowRamDevice': 'false',
           'sdkInt': 18,
@@ -93,6 +128,7 @@ void main() {
 
         expect(signals.platform, 'ios');
         expect(signals.deviceModel, 'iPhone16,2');
+        expect(signals.osVersion, 'iOS 18.0');
         expect(signals.totalRamBytes, 6 * _bytesPerGb);
         expect(signals.isLowRamDevice, isFalse);
         expect(signals.mediaPerformanceClass, isNull);
@@ -128,10 +164,14 @@ const int _bytesPerGb = 1024 * 1024 * 1024;
 const List<String> _androidExpectedKeys = <String>[
   'platform',
   'deviceModel',
+  'osVersion',
   'totalRamBytes',
   'isLowRamDevice',
   'mediaPerformanceClass',
   'sdkInt',
+  'thermalState',
+  'thermalStateLevel',
+  'isLowPowerModeEnabled',
   'memoryPressureState',
   'memoryPressureLevel',
 ];
@@ -139,6 +179,7 @@ const List<String> _androidExpectedKeys = <String>[
 const List<String> _iosExpectedKeys = <String>[
   'platform',
   'deviceModel',
+  'osVersion',
   'totalRamBytes',
   'isLowRamDevice',
   'sdkInt',
@@ -152,6 +193,7 @@ const List<String> _iosExpectedKeys = <String>[
 const List<String> _allSignalKeys = <String>[
   'platform',
   'deviceModel',
+  'osVersion',
   'totalRamBytes',
   'isLowRamDevice',
   'mediaPerformanceClass',

@@ -6,6 +6,7 @@ class DeviceSignals {
     required this.platform,
     required this.collectedAt,
     this.deviceModel,
+    this.osVersion,
     this.totalRamBytes,
     this.isLowRamDevice,
     this.mediaPerformanceClass,
@@ -24,6 +25,7 @@ class DeviceSignals {
 
   final String platform;
   final String? deviceModel;
+  final String? osVersion;
   final int? totalRamBytes;
   final bool? isLowRamDevice;
   final int? mediaPerformanceClass;
@@ -45,6 +47,7 @@ class DeviceSignals {
   DeviceSignals copyWith({
     String? platform,
     String? deviceModel,
+    String? osVersion,
     int? totalRamBytes,
     bool? isLowRamDevice,
     int? mediaPerformanceClass,
@@ -64,6 +67,7 @@ class DeviceSignals {
     return DeviceSignals(
       platform: platform ?? this.platform,
       deviceModel: deviceModel ?? this.deviceModel,
+      osVersion: osVersion ?? this.osVersion,
       totalRamBytes: totalRamBytes ?? this.totalRamBytes,
       isLowRamDevice: isLowRamDevice ?? this.isLowRamDevice,
       mediaPerformanceClass:
@@ -88,6 +92,7 @@ class DeviceSignals {
     return <String, Object?>{
       'platform': platform,
       'deviceModel': deviceModel,
+      'osVersion': osVersion,
       'totalRamBytes': totalRamBytes,
       'isLowRamDevice': isLowRamDevice,
       'mediaPerformanceClass': mediaPerformanceClass,
@@ -113,6 +118,7 @@ class DeviceSignals {
     return DeviceSignals(
       platform: _asString(map['platform']) ?? 'unknown',
       deviceModel: _asString(map['deviceModel']),
+      osVersion: _asString(map['osVersion']),
       totalRamBytes: _asInt(map['totalRamBytes']),
       isLowRamDevice: _asBool(map['isLowRamDevice']),
       mediaPerformanceClass: _asInt(map['mediaPerformanceClass']),

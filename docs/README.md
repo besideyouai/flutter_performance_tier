@@ -5,10 +5,14 @@
 当前项目状态、验证边界与本地规则优先看根目录事实源：
 
 - `../SPEC.md`：当前项目姿态、Android-first 性能监测方向、breaking change 口径
-- `../TEST.md`：测试范围、真机报告拉取证据、adb / `@test-android-apps` 验证边界
+- `../TEST.md`：测试范围、真机 report gate / evidence 证据、adb / `@test-android-apps` 验证边界
 - `../LOCAL.md`：本地 setup、human-only 命令、secret 和机器本地文件
 - `../PACKAGING.md`：package 身份、版本、签名与产物边界
 - `../GENERATION.md`：生成文件、生成命令与输出归属
+
+当前正在推进的架构目标：
+
+- `../goals/2026-06-11-android-performance-report-loop/goal.html`：Android 性能报告架构闭环，展示 Example UI -> Dart Service -> Platform Store -> Android Storage -> Host Analysis 的当前方向、完成度和下一步真机验收动作。
 
 当前文档按用途收口如下：
 
@@ -22,9 +26,10 @@
 ## 优先阅读
 
 - `../SPEC.md`：当前阶段目标与兼容性姿态
-- `../TEST.md`：当前验证范围与报告拉取验收口径
+- `../TEST.md`：当前验证范围与 report gate / evidence 验收口径
+- `../goals/2026-06-11-android-performance-report-loop/goal.html`：当前 report loop 架构看板和推进状态
 - `plan/development_plan.md`：历史阶段计划；当前状态以 `../SPEC.md` 为准
-- `plan/real_device_acceptance_checklist.md`：历史 JSON + OSS 验收清单；当前报告拉取验收以 `../TEST.md` 为准
+- `plan/real_device_acceptance_checklist.md`：历史 JSON + OSS 验收清单；当前 report gate / evidence 验收以 `../TEST.md` 为准
 - `progress/runtime_dynamic_tiering.md`：运行期动态分级规则、联调模板与测试说明
 
 ## 设计与计划

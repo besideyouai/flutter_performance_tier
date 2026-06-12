@@ -110,6 +110,7 @@ void main() {
             calls.add(call);
             return <String, Object?>{
               'deviceModel': 'Pixel 8 Pro',
+              'osVersion': '15',
               'totalRamBytes': 8 * 1024 * 1024 * 1024,
               'sdkInt': 35,
             };
@@ -130,6 +131,7 @@ void main() {
       expect(calls.single.method, 'collectDeviceSignals');
       expect(signals.platform, 'android');
       expect(signals.deviceModel, 'Pixel 8 Pro');
+      expect(signals.osVersion, '15');
       expect(signals.totalRamBytes, 8 * 1024 * 1024 * 1024);
       expect(signals.sdkInt, 35);
     }, skip: kIsWeb);
@@ -142,6 +144,7 @@ void main() {
             calls.add(call);
             return <String, Object?>{
               'deviceModel': 'iPhone16,2',
+              'osVersion': 'iOS 18.0',
               'totalRamBytes': 6 * 1024 * 1024 * 1024,
               'sdkInt': 18,
               'thermalState': 'serious',
@@ -163,6 +166,7 @@ void main() {
       expect(calls.single.method, 'collectDeviceSignals');
       expect(signals.platform, 'ios');
       expect(signals.deviceModel, 'iPhone16,2');
+      expect(signals.osVersion, 'iOS 18.0');
       expect(signals.totalRamBytes, 6 * 1024 * 1024 * 1024);
       expect(signals.sdkInt, 18);
       expect(signals.thermalState, 'serious');

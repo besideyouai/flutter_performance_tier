@@ -32,6 +32,13 @@ void main() {
       expect(reportStore.reports.first.source, 'unit-test');
       expect(reportStore.reports.first.decision.tier, TierLevel.t3Ultra);
       expect(reportStore.reports.first.metadata, contains('serviceSessionId'));
+      final serviceSessionId =
+          reportStore.reports.first.metadata['serviceSessionId'] as String;
+      expect(serviceSessionId, isNotEmpty);
+      expect(
+        reportStore.reports.last.metadata['serviceSessionId'],
+        serviceSessionId,
+      );
       expect(
         reportStore.reports.first.metadata,
         containsPair('reportSequence', 1),
@@ -40,6 +47,8 @@ void main() {
         reportStore.reports.last.metadata,
         containsPair('reportSequence', 2),
       );
+      expect(reportStore.reports.first.reportId, '$serviceSessionId-report-1');
+      expect(reportStore.reports.last.reportId, '$serviceSessionId-report-2');
       expect(
         reportStore.reports.first.reportId,
         isNot(reportStore.reports.last.reportId),

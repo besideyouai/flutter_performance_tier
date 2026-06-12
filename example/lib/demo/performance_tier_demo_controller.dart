@@ -51,6 +51,8 @@ class PerformanceTierDemoController extends ChangeNotifier {
       _lastReportWriteResult;
   List<PerformanceReportFile> get androidReportFiles => _androidReportFiles;
   String? get androidReportError => _androidReportError;
+  bool get canCopyAndroidReportHostCommands =>
+      _androidReportCommandFileName != null;
 
   Future<void> start() {
     if (_disposed || _started) {
@@ -156,29 +158,69 @@ class PerformanceTierDemoController extends ChangeNotifier {
     }
   }
 
-  Future<void> copyAndroidReportCommands(BuildContext context) async {
+  Future<void> copyAndroidReportHostCommands(BuildContext context) async {
+    if (!canCopyAndroidReportHostCommands) {
+      return;
+    }
     await _copyToClipboard(
       context,
-      buildAndroidReportCommands(),
-      successMessage: 'Android report adb commands copied.',
+      buildAndroidReportHostCommands(),
+      successMessage: 'Android report host commands copied.',
     );
   }
 
-  String buildAndroidReportCommands({
+  String buildAndroidReportHostCommands({
     String applicationId = _exampleAndroidApplicationId,
-    String hostReportFile = '<host-report-file>',
+    String? hostReportFile,
+    String analysisOutputDir = 'build/diagnostics_analysis_android_report_gate',
+    String? evidenceOutputFile,
   }) {
-    final fileName =
-        _lastReportWriteResult?.fileName ??
-        (_androidReportFiles.isNotEmpty
-            ? _androidReportFiles.first.fileName
-            : '<fileName>');
-    return 'adb shell run-as $applicationId ls files/performance_tier_reports\n'
-        'adb exec-out run-as $applicationId cat '
-        'files/performance_tier_reports/$fileName > $hostReportFile';
+    final fileName = _androidReportCommandFileName;
+    if (fileName == null) {
+      return 'Generate or list a safe report before copying host commands.';
+    }
+    const reportDirectory = 'files/performance_tier_reports';
+    final reportPath = '$reportDirectory/$fileName';
+    final resolvedHostReportFile =
+        hostReportFile ?? 'build/pulled_performance_reports/$fileName';
+    final hostReportDirectory = _hostDirectoryFor(resolvedHostReportFile);
+    final gateReportFile = '$analysisOutputDir/android_report_gate.md';
+    final resolvedEvidenceOutputFile =
+        evidenceOutputFile ??
+        'goals/2026-06-11-android-performance-report-loop/evidence/'
+            'android_report_loop_${_withoutJsonExtension(fileName)}.md';
+    final commands = <String>[
+      'set -e',
+      'adb shell run-as ${_shellQuote(applicationId)} '
+          'ls ${_shellQuote(reportDirectory)}',
+      'mkdir -p ${_shellQuote(hostReportDirectory)}',
+      'adb exec-out run-as ${_shellQuote(applicationId)} '
+          'cat ${_shellQuote(reportPath)} > '
+          '${_shellQuote(resolvedHostReportFile)}',
+      'test -s ${_shellQuote(resolvedHostReportFile)}',
+      'set +e',
+      'python3 tool/analyze_diagnostics.py '
+          '${_shellQuote(resolvedHostReportFile)} '
+          '--output ${_shellQuote(analysisOutputDir)} --android-report-gate',
+      r'gate_status=$?',
+      'set -e',
+      'cat ${_shellQuote(gateReportFile)}',
+      r'test "$gate_status" -eq 0',
+      'python3 tool/build_android_report_evidence.py '
+          '${_shellQuote(resolvedHostReportFile)} '
+          '--analysis-output-dir ${_shellQuote(analysisOutputDir)} '
+          '--branch $_gitBranchShellValue '
+          '--commit $_gitCommitShellValue '
+          '--output ${_shellQuote(resolvedEvidenceOutputFile)} '
+          '--application-id ${_shellQuote(applicationId)}',
+      'python3 tool/validate_android_report_evidence.py '
+          '${_shellQuote(resolvedEvidenceOutputFile)}',
+    ];
+    return commands.join('\n');
   }
 
   Map<String, Object?> buildAndroidReportSections() {
+    final hostCommands = buildAndroidReportHostCommands();
     return <String, Object?>{
       'androidReportLoop': <String, Object?>{
         'lastWriteResult': _lastReportWriteResult?.toMap(),
@@ -186,9 +228,75 @@ class PerformanceTierDemoController extends ChangeNotifier {
             .map((PerformanceReportFile file) => file.toMap())
             .toList(growable: false),
         'error': _androidReportError,
-        'adbCommands': buildAndroidReportCommands(),
+        'hostCommands': hostCommands,
+        'adbCommands': hostCommands,
       },
     };
+  }
+
+  String? get _androidReportCommandFileName {
+    final writtenFileName = _lastReportWriteResult?.fileName;
+    if (_isSafeAndroidReportFileName(writtenFileName)) {
+      return writtenFileName;
+    }
+
+    PerformanceReportFile? selectedFile;
+    for (final file in _androidReportFiles) {
+      if (!_isSafeAndroidReportFileName(file.fileName)) {
+        continue;
+      }
+      final selectedModifiedAt = selectedFile?.modifiedAt;
+      final fileModifiedAt = file.modifiedAt;
+      final isNewer =
+          fileModifiedAt != null &&
+          (selectedModifiedAt == null ||
+              fileModifiedAt.isAfter(selectedModifiedAt));
+      if (selectedFile == null || isNewer) {
+        selectedFile = file;
+      }
+    }
+    return selectedFile?.fileName;
+  }
+
+  static bool _isSafeAndroidReportFileName(String? fileName) {
+    if (fileName == null || fileName.isEmpty || !fileName.endsWith('.json')) {
+      return false;
+    }
+    for (final codeUnit in fileName.codeUnits) {
+      final isLower = codeUnit >= 97 && codeUnit <= 122;
+      final isUpper = codeUnit >= 65 && codeUnit <= 90;
+      final isDigit = codeUnit >= 48 && codeUnit <= 57;
+      final isSymbol = codeUnit == 45 || codeUnit == 46 || codeUnit == 95;
+      if (!isLower && !isUpper && !isDigit && !isSymbol) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static String _withoutJsonExtension(String fileName) {
+    if (fileName.endsWith('.json')) {
+      return fileName.substring(0, fileName.length - '.json'.length);
+    }
+    return fileName;
+  }
+
+  static String _hostDirectoryFor(String filePath) {
+    final slashIndex = filePath.lastIndexOf('/');
+    if (slashIndex < 0) {
+      return '.';
+    }
+    if (slashIndex == 0) {
+      return '/';
+    }
+    return filePath.substring(0, slashIndex);
+  }
+
+  static String _shellQuote(String value) {
+    if (value == '.') {
+      return '.';
+    }
+    return "'${value.replaceAll("'", r"'\''")}'";
   }
 
   String buildAiReport({
@@ -363,3 +471,5 @@ class PerformanceTierDemoController extends ChangeNotifier {
 
 const String _exampleAndroidApplicationId =
     'com.example.flutter_performance_tier_example';
+const String _gitBranchShellValue = r'"$(git branch --show-current)"';
+const String _gitCommitShellValue = r'"$(git rev-parse --short HEAD)"';

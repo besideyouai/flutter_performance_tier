@@ -46,6 +46,41 @@ clear migration notes.
 5. Preserve enough offline analysis support that pulled reports can be inspected
    by scripts such as `tool/analyze_diagnostics.py` or its successor.
 
+## Current Architecture Direction
+
+The active Android report-loop architecture has five responsibility layers:
+
+1. Example UI: a human-operated validation entry that generates reports, lists
+   report files, and copies host commands.
+2. Dart service: report assembly around the current `TierDecision`, including
+   V1 schema, source, timestamp, service session, report sequence, and report id.
+3. Platform store: the MethodChannel boundary that writes reports and lists
+   native file metadata while rejecting malformed platform results.
+4. Android storage: app-private JSON report files under the package-owned report
+   directory, without external-storage permissions.
+5. Host analysis: pulled JSON reports are checked by the analyzer gate and
+   turned into readable PASS / FAIL evidence.
+
+This architecture keeps device-side generation and host-side retrieval as the
+main loop. Upload probes, dashboards, aggregation, and automatic retention are
+not part of the current readiness definition.
+
+The detailed current execution state, acceptance checklist, and unresolved
+manual validation items for this loop live in
+`goals/2026-06-11-android-performance-report-loop/goal.html`.
+
+## Current Readiness Boundary
+
+Local implementation, parser, and non-device tests can establish the package
+contract for the first four layers and the host analyzer behavior. They cannot
+prove that a real Android target writes, owns, lists, and exposes files through
+`run-as` or an assisted device collection workflow.
+
+Do not describe this loop as ready, publishable, or stable for package consumers
+until a real-device report is generated, pulled to a host machine, accepted by
+the Android report gate described in `TEST.md`, and recorded in filled goal
+evidence that validates with `android_report_evidence_status=PASS`.
+
 ## Non-Goals
 
 1. Preserving the old public API surface when it blocks the Android report
@@ -97,8 +132,8 @@ clear migration notes.
 
 - `SPEC.md` owns project posture, compatibility stance, current goals, and
   non-goals.
-- `TEST.md` owns validation scope, manual device evidence, report pull
-  requirements, and agent command boundaries.
+- `TEST.md` owns validation scope, manual device evidence, report gate /
+  evidence requirements, and agent command boundaries.
 - `LOCAL.md` owns local setup, debug entries, adb handoff notes, and secrets.
 - `PACKAGING.md` owns package identity, versioning, signing, and artifact rules.
 - `GENERATION.md` owns generated-file policy.

@@ -3,18 +3,36 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Android 性能报告拉取骨架</title>
+  <title>Android report loop 整体架构</title>
+  <link rel="icon" href="data:,">
   <style>
     :root {
       color-scheme: light;
-      --bg: #f6f8fb;
+      --bg: #f4f6f8;
       --panel: #ffffff;
+      --panel-strong: #eef5f2;
+      --paper: #fbfcfd;
       --text: #172033;
-      --muted: #5f6b7a;
-      --line: #d9e1ec;
-      --accent: #255f85;
-      --accent-soft: #e8f3f8;
+      --muted: #5d6775;
+      --line: #d7dee8;
+      --accent: #1f6b57;
+      --accent-strong: #174f41;
+      --accent-soft: #e3f2ed;
+      --device: #2356a6;
+      --device-soft: #e8f0ff;
+      --host: #8a5a12;
+      --host-soft: #fff3d7;
+      --contract: #4f46a5;
+      --contract-soft: #eeedff;
+      --warn: #8a5a12;
+      --warn-soft: #fff3d7;
+      --code: #233146;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: var(--bg);
@@ -22,148 +40,3730 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       line-height: 1.62;
     }
+
     main {
-      max-width: 980px;
+      max-width: 1180px;
       margin: 0 auto;
-      padding: 48px 24px 72px;
+      padding: 42px 24px 72px;
     }
+
     h1 {
-      margin: 0 0 12px;
-      font-size: 34px;
-      line-height: 1.18;
+      margin: 0 0 14px;
+      font-size: clamp(32px, 4vw, 50px);
+      line-height: 1.08;
       letter-spacing: 0;
     }
+
     h2 {
-      margin: 34px 0 12px;
+      margin: 0 0 14px;
       font-size: 22px;
       letter-spacing: 0;
     }
-    p, li {
-      font-size: 16px;
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 17px;
+      letter-spacing: 0;
     }
-    ul {
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    ul,
+    ol {
+      margin: 0;
       padding-left: 22px;
     }
-    .goal-line {
-      margin: 0 0 18px;
-      padding: 16px 18px;
-      background: var(--accent-soft);
-      border-left: 4px solid var(--accent);
-      font-size: 18px;
+
+    li + li {
+      margin-top: 6px;
     }
-    .meta {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
-      margin: 20px 0 30px;
+
+    code {
+      padding: 2px 5px;
+      border-radius: 4px;
+      background: #eef1f5;
+      color: var(--code);
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.92em;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
-    .meta div, section {
+
+    a {
+      color: var(--accent-strong);
+    }
+
+    .card,
+    .metric,
+    .glance-step,
+    .glance-fact,
+    .answer-card,
+    .layer,
+    .flow-step,
+    .architecture-panel,
+    .system-node,
+    .contract-item,
+    .decision-card {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 8px;
-      padding: 18px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
     }
-    .label {
+
+    section {
+      margin-top: 28px;
+      padding-top: 26px;
+      border-top: 1px solid var(--line);
+    }
+
+    .hero {
+      padding: 0 0 8px;
+    }
+
+    .goal-line {
+      margin: 0 0 18px;
+      padding: 18px 20px;
+      background: var(--accent-soft);
+      border-left: 5px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      font-size: 18px;
+    }
+
+    .architecture-wall {
+      margin: 20px 0 22px;
+      padding: 20px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .wall-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 260px;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 18px;
+    }
+
+    .wall-header h2 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 3.6vw, 44px);
+      line-height: 1.08;
+    }
+
+    .wall-header p {
+      max-width: 860px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .wall-status {
+      padding: 14px;
+      background: var(--warn-soft);
+      border: 1px solid #ebcf8e;
+      border-radius: 8px;
+    }
+
+    .wall-status strong,
+    .wall-status span {
       display: block;
+    }
+
+    .wall-status strong {
+      color: var(--warn);
+      line-height: 1.25;
+      margin-bottom: 6px;
+    }
+
+    .wall-status span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .wall-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .wall-map {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .wall-lane {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 12px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .wall-lane.device {
+      border-left: 5px solid var(--device);
+    }
+
+    .wall-lane.host {
+      border-left: 5px solid var(--host);
+    }
+
+    .wall-lane.contract {
+      border-left: 5px solid var(--contract);
+    }
+
+    .wall-lane-label strong,
+    .wall-lane-label span {
+      display: block;
+    }
+
+    .wall-lane-label strong {
+      margin-bottom: 4px;
+      line-height: 1.25;
+    }
+
+    .wall-lane-label span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .wall-node-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .wall-lane.contract .wall-node-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .wall-node {
+      min-height: 118px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .wall-node strong,
+    .wall-node span {
+      display: block;
+    }
+
+    .wall-node-index {
+      width: max-content;
+      margin-bottom: 8px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #eef1f5;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.35;
+    }
+
+    .wall-node strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .wall-node span:last-child {
       color: var(--muted);
       font-size: 13px;
+      line-height: 1.43;
+    }
+
+    .wall-verdict {
+      display: grid;
+      gap: 12px;
+    }
+
+    .wall-verdict-card {
+      padding: 15px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .wall-verdict-card.primary {
+      background: #172033;
+      color: #ffffff;
+      border-color: #172033;
+    }
+
+    .wall-verdict-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .wall-verdict-card strong,
+    .wall-verdict-card span {
+      display: block;
+    }
+
+    .wall-verdict-card strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .wall-verdict-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .wall-verdict-card.primary span {
+      color: #dce7e4;
+    }
+
+    .wall-verdict-card.warning strong {
+      color: var(--warn);
+    }
+
+    .architecture-blueprint {
+      margin: 18px 0 20px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .blueprint-titlebar {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .blueprint-titlebar h2 {
+      margin: 0 0 8px;
+      font-size: clamp(30px, 3.8vw, 46px);
+      line-height: 1.08;
+    }
+
+    .blueprint-titlebar p {
+      max-width: 860px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .blueprint-badge {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      border: 1px solid #c8dfd6;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .architecture-glance {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 14px;
+      margin: 0 0 16px;
+      align-items: stretch;
+    }
+
+    .glance-main {
+      min-width: 0;
+      padding: 18px;
+      background: #172033;
+      color: #ffffff;
+      border-radius: 8px;
+    }
+
+    .glance-main .label {
+      color: #b8d8cf;
+    }
+
+    .glance-main h3 {
+      margin: 0 0 8px;
+      max-width: 820px;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.12;
+    }
+
+    .glance-main > p {
+      max-width: 880px;
+      color: #dce7e4;
+    }
+
+    .glance-spine {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .glance-step {
+      position: relative;
+      min-height: 126px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.18);
+      box-shadow: none;
+      color: #ffffff;
+    }
+
+    .glance-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      z-index: 1;
+      transform: translateY(-50%);
+      color: #dce7e4;
+      font-weight: 800;
+    }
+
+    .glance-step span,
+    .glance-step strong,
+    .glance-step p,
+    .glance-fact span,
+    .glance-fact strong {
+      display: block;
+    }
+
+    .glance-step span {
+      margin-bottom: 7px;
+      color: #b8d8cf;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .glance-step strong {
+      margin-bottom: 6px;
+      line-height: 1.18;
+      font-size: 16px;
+    }
+
+    .glance-step p {
+      margin: 0;
+      color: #dce7e4;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .glance-aside {
+      display: grid;
+      gap: 10px;
+    }
+
+    .glance-fact {
+      min-height: 118px;
+      padding: 14px;
+      background: var(--panel);
+    }
+
+    .glance-fact.primary {
+      background: var(--accent-soft);
+      border-color: #c8dfd6;
+    }
+
+    .glance-fact.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .glance-fact strong {
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .glance-fact span:last-child {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.42;
+    }
+
+    .architecture-answer {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 16px;
+    }
+
+    .answer-card {
+      min-height: 126px;
+      padding: 14px;
+      border-top: 5px solid var(--accent);
+      background: #ffffff;
+    }
+
+    .answer-card.device {
+      border-top-color: var(--device);
+      background: var(--device-soft);
+    }
+
+    .answer-card.host {
+      border-top-color: var(--host);
+      background: var(--host-soft);
+    }
+
+    .answer-card.contract {
+      border-top-color: var(--contract);
+      background: var(--contract-soft);
+    }
+
+    .answer-card.warning {
+      border-top-color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    .answer-card strong,
+    .answer-card span {
+      display: block;
+    }
+
+    .answer-card strong {
+      margin-bottom: 7px;
+      line-height: 1.22;
+      font-size: 17px;
+    }
+
+    .answer-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.44;
+    }
+
+    .blueprint-map {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .blueprint-lanes {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .blueprint-lane {
+      display: grid;
+      grid-template-columns: 150px minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--accent);
+      border-radius: 8px;
+    }
+
+    .blueprint-lane.device {
+      border-left-color: var(--device);
+    }
+
+    .blueprint-lane.host {
+      border-left-color: var(--host);
+    }
+
+    .blueprint-lane.contract {
+      border-left-color: var(--contract);
+    }
+
+    .blueprint-lane-title {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 112px;
+    }
+
+    .blueprint-lane-title strong,
+    .blueprint-lane-title span,
+    .blueprint-node strong,
+    .blueprint-node span,
+    .blueprint-side-card strong,
+    .blueprint-side-card span,
+    .blueprint-scope-card strong,
+    .blueprint-scope-card span {
+      display: block;
+    }
+
+    .blueprint-lane-title strong {
+      line-height: 1.16;
+      font-size: 18px;
+    }
+
+    .blueprint-lane-title span {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .blueprint-chain {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .blueprint-lane.contract .blueprint-chain {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .blueprint-node {
+      position: relative;
+      min-height: 112px;
+      padding: 12px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .blueprint-node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      z-index: 1;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .blueprint-node span:first-child {
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .blueprint-node strong {
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .blueprint-node span:last-child {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .blueprint-sidebar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .blueprint-side-card {
+      min-height: 128px;
+      padding: 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .blueprint-side-card.primary {
+      background: var(--accent-soft);
+      border-color: #c8dfd6;
+    }
+
+    .blueprint-side-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .blueprint-side-card strong {
+      margin-bottom: 6px;
+      line-height: 1.22;
+    }
+
+    .blueprint-side-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .blueprint-scope {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .blueprint-scope-card {
+      min-height: 112px;
+      padding: 14px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .blueprint-scope-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .blueprint-scope-card .label {
+      color: var(--muted);
+    }
+
+    .blueprint-scope-card strong {
+      margin-bottom: 6px;
+      line-height: 1.24;
+    }
+
+    .blueprint-scope-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-command-center {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      margin: 18px 0;
+      align-items: stretch;
+    }
+
+    .command-main,
+    .command-card,
+    .focus-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .command-main {
+      padding: 22px;
+      background: #172033;
+      color: #ffffff;
+    }
+
+    .command-main .label {
+      color: #b8d8cf;
+    }
+
+    .command-main h2 {
+      max-width: 820px;
+      margin: 0 0 10px;
+      font-size: clamp(28px, 3.4vw, 42px);
+      line-height: 1.12;
+    }
+
+    .command-main p {
+      max-width: 900px;
+      color: #dce7e4;
+      font-size: 16px;
+    }
+
+    .command-kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .command-kpi {
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .command-kpi strong,
+    .command-kpi span,
+    .command-card strong,
+    .command-card span,
+    .focus-card strong,
+    .focus-card span {
+      display: block;
+    }
+
+    .command-kpi strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .command-kpi span {
+      color: #dce7e4;
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .command-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .command-card {
+      min-height: 116px;
+      padding: 16px;
+      background: var(--panel);
+    }
+
+    .command-card.primary {
+      background: var(--accent-soft);
+      border-color: #c8dfd6;
+    }
+
+    .command-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .command-card strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .command-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-focus-strip {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 18px;
+    }
+
+    .focus-card {
+      min-height: 138px;
+      padding: 16px;
+      background: var(--panel);
+      border-top: 5px solid var(--accent);
+    }
+
+    .focus-card.device {
+      border-top-color: var(--device);
+    }
+
+    .focus-card.host {
+      border-top-color: var(--host);
+    }
+
+    .focus-card.contract {
+      border-top-color: var(--contract);
+    }
+
+    .focus-card.warning {
+      border-top-color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    .focus-card strong {
+      margin-bottom: 8px;
+      line-height: 1.24;
+      font-size: 17px;
+    }
+
+    .focus-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-canvas {
+      margin: 18px 0;
+      padding: 18px;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .canvas-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 280px;
+      gap: 16px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .canvas-header .label {
+      color: var(--accent-strong);
+    }
+
+    .canvas-header h2 {
+      margin: 0 0 8px;
+      font-size: clamp(28px, 3.6vw, 44px);
+      line-height: 1.1;
+    }
+
+    .canvas-header p {
+      max-width: 820px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .canvas-status {
+      padding: 14px;
+      background: var(--warn-soft);
+      color: #513504;
+      border: 1px solid #ebcf8e;
+      border-radius: 8px;
+    }
+
+    .canvas-status strong,
+    .canvas-status span {
+      display: block;
+    }
+
+    .canvas-status strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .canvas-status span {
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .canvas-lanes {
+      display: grid;
+      gap: 12px;
+    }
+
+    .canvas-lane {
+      display: grid;
+      grid-template-columns: 160px minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+      padding: 12px;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--accent);
+      border-radius: 8px;
+    }
+
+    .canvas-lane.device {
+      border-left-color: var(--device);
+    }
+
+    .canvas-lane.host {
+      border-left-color: var(--host);
+    }
+
+    .canvas-lane.contract {
+      border-left-color: var(--contract);
+    }
+
+    .canvas-lane-title {
+      display: flex;
+      min-height: 96px;
+      flex-direction: column;
+      justify-content: center;
+      padding: 10px;
+    }
+
+    .canvas-lane-title strong,
+    .canvas-lane-title span {
+      display: block;
+    }
+
+    .canvas-lane-title strong {
+      line-height: 1.2;
+      font-size: 18px;
+    }
+
+    .canvas-lane-title span {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .canvas-chain {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .canvas-node {
+      min-height: 96px;
+      padding: 12px;
+      background: #ffffff;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .canvas-node strong,
+    .canvas-node span {
+      display: block;
+    }
+
+    .canvas-node strong {
+      margin-bottom: 6px;
+      line-height: 1.24;
+    }
+
+    .canvas-node span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .canvas-outcomes {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .canvas-fact {
+      min-height: 112px;
+      padding: 14px;
+      background: #ffffff;
+      color: var(--text);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .canvas-fact.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .canvas-fact .label {
+      color: var(--muted);
+    }
+
+    .canvas-fact strong,
+    .canvas-fact span {
+      display: block;
+    }
+
+    .canvas-fact strong {
+      margin-bottom: 6px;
+      line-height: 1.24;
+    }
+
+    .canvas-fact span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-priority {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 16px;
+      margin: 18px 0;
+      align-items: stretch;
+    }
+
+    .priority-main,
+    .priority-fact {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .priority-main {
+      padding: 22px;
+      background: var(--panel);
+    }
+
+    .priority-main h2 {
+      max-width: 820px;
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.14;
+    }
+
+    .priority-main p {
+      max-width: 860px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .priority-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .priority-step {
+      position: relative;
+      min-height: 156px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--accent);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+
+    .priority-step.device {
+      border-top-color: var(--device);
+    }
+
+    .priority-step.host {
+      border-top-color: var(--host);
+    }
+
+    .priority-step.contract {
+      border-top-color: var(--contract);
+    }
+
+    .priority-step.warning {
+      border-top-color: var(--warn);
+      background: var(--warn-soft);
+    }
+
+    .priority-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-weight: 900;
+      z-index: 1;
+    }
+
+    .priority-index {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .priority-step strong,
+    .priority-step span:last-child,
+    .priority-fact strong,
+    .priority-fact span {
+      display: block;
+    }
+
+    .priority-step strong {
+      margin-bottom: 8px;
+      line-height: 1.24;
+      font-size: 17px;
+    }
+
+    .priority-step span:last-child {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .priority-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .priority-fact {
+      padding: 16px;
+      background: var(--panel);
+    }
+
+    .priority-fact.primary {
+      background: #172033;
+      border-color: #172033;
+      color: #ffffff;
+    }
+
+    .priority-fact.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .priority-fact strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .priority-fact span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .priority-fact.primary .label {
+      color: #b8d8cf;
+    }
+
+    .priority-fact.primary span {
+      color: #dce7e4;
+    }
+
+    .architecture-dashboard {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+      gap: 16px;
+      margin: 18px 0;
+      align-items: stretch;
+    }
+
+    .dashboard-main,
+    .dashboard-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .dashboard-main {
+      padding: 22px;
+      background: #172033;
+      color: #ffffff;
+    }
+
+    .dashboard-main .label {
+      color: #b8d8cf;
+    }
+
+    .dashboard-main h2 {
+      margin: 0 0 12px;
+      font-size: clamp(26px, 3.2vw, 40px);
+      line-height: 1.12;
+    }
+
+    .dashboard-main p {
+      max-width: 760px;
+      color: #dce7e4;
+      font-size: 16px;
+    }
+
+    .dashboard-status {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .dashboard-pill {
+      min-height: 96px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .dashboard-pill strong,
+    .dashboard-pill span {
+      display: block;
+    }
+
+    .dashboard-pill strong {
+      margin-bottom: 6px;
+      line-height: 1.24;
+    }
+
+    .dashboard-pill span {
+      color: #dce7e4;
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .dashboard-side {
+      display: grid;
+      gap: 12px;
+    }
+
+    .dashboard-card {
+      display: grid;
+      grid-template-columns: 86px minmax(0, 1fr);
+      gap: 14px;
+      min-height: 112px;
+      padding: 16px;
+      background: var(--panel);
+      align-items: start;
+    }
+
+    .dashboard-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .dashboard-tag {
+      display: inline-grid;
+      place-items: center;
+      min-height: 42px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+
+    .dashboard-card.warning .dashboard-tag {
+      background: #f7e2af;
+      color: var(--warn);
+    }
+
+    .dashboard-card strong,
+    .dashboard-card span {
+      display: block;
+    }
+
+    .dashboard-card strong {
+      margin-bottom: 5px;
+      line-height: 1.25;
+    }
+
+    .dashboard-card span {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-snapshot {
+      margin-top: 18px;
+      padding: 18px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .snapshot-titlebar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+
+    .snapshot-titlebar h2 {
+      margin: 2px 0 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.16;
+    }
+
+    .snapshot-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 32px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--contract-soft);
+      color: var(--contract);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .snapshot-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 270px;
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .snapshot-lanes {
+      display: grid;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .snapshot-lane {
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--paper);
+    }
+
+    .snapshot-lane.device {
+      border-left: 5px solid var(--device);
+    }
+
+    .snapshot-lane.host {
+      border-left: 5px solid var(--host);
+    }
+
+    .snapshot-lane.gate {
+      border-left: 5px solid var(--contract);
+    }
+
+    .lane-label strong,
+    .lane-label span {
+      display: block;
+    }
+
+    .lane-label strong {
+      line-height: 1.25;
+    }
+
+    .lane-label span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .lane-steps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .snapshot-step {
+      position: relative;
+      min-height: 94px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
+    .snapshot-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -12px;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-weight: 900;
+      z-index: 1;
+    }
+
+    .snapshot-step strong,
+    .snapshot-step span {
+      display: block;
+    }
+
+    .snapshot-step strong {
+      margin-bottom: 6px;
+      line-height: 1.25;
+    }
+
+    .snapshot-step span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .snapshot-sidebar {
+      display: grid;
+      gap: 12px;
+    }
+
+    .snapshot-note {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--accent-soft);
+    }
+
+    .snapshot-note.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .snapshot-note strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .snapshot-note span {
+      display: block;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .architecture-brief {
+      display: grid;
+      grid-template-columns: 1.25fr repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .brief-card {
+      min-height: 148px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .brief-card.primary {
+      background: #172033;
+      border-color: #172033;
+      color: #ffffff;
+    }
+
+    .brief-card strong,
+    .brief-card p {
+      display: block;
+    }
+
+    .brief-card strong {
+      margin-bottom: 8px;
+      font-size: 19px;
+      line-height: 1.25;
+    }
+
+    .brief-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .brief-card.primary .label {
+      color: #b8d8cf;
+    }
+
+    .brief-card.primary p {
+      color: #dce7e4;
+    }
+
+    .architecture-layer-map {
+      margin-top: 18px;
+      padding: 18px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(17, 24, 39, 0.04);
+    }
+
+    .layer-map-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 14px;
+    }
+
+    .layer-map-title h2 {
+      margin: 0;
+      font-size: clamp(24px, 3vw, 34px);
+      line-height: 1.16;
+    }
+
+    .layer-map-title p {
+      max-width: 420px;
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .layer-map-scroll {
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .layer-map-row {
+      display: grid;
+      grid-template-columns: 150px repeat(4, minmax(150px, 1fr));
+      min-width: 920px;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+    }
+
+    .layer-map-row:first-child {
+      border-top: 1px solid var(--line);
+      border-radius: 8px 8px 0 0;
+      overflow: hidden;
+    }
+
+    .layer-map-row:last-child {
+      border-bottom: 1px solid var(--line);
+      border-radius: 0 0 8px 8px;
+      overflow: hidden;
+    }
+
+    .layer-map-row + .layer-map-row {
+      border-top: 1px solid var(--line);
+    }
+
+    .layer-map-cell {
+      min-height: 98px;
+      padding: 12px;
+      background: #ffffff;
+      border-right: 1px solid var(--line);
+    }
+
+    .layer-map-cell:last-child {
+      border-right: 0;
+    }
+
+    .layer-map-row.header .layer-map-cell {
+      min-height: auto;
+      background: #172033;
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      line-height: 1.3;
+      text-transform: uppercase;
+    }
+
+    .layer-map-layer {
+      background: var(--paper);
+      border-left: 5px solid var(--accent);
+    }
+
+    .layer-map-layer.device {
+      border-left-color: var(--device);
+    }
+
+    .layer-map-layer.host {
+      border-left-color: var(--host);
+    }
+
+    .layer-map-layer.contract {
+      border-left-color: var(--contract);
+    }
+
+    .layer-map-cell strong,
+    .layer-map-cell span {
+      display: block;
+    }
+
+    .layer-map-cell strong {
+      margin-bottom: 6px;
+      line-height: 1.24;
+    }
+
+    .layer-map-cell span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .layer-map-cell.warning {
+      background: var(--warn-soft);
+    }
+
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .architecture-ribbon {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+      padding: 14px;
+      background: #172033;
+      border-radius: 8px;
+      color: #ffffff;
+    }
+
+    .ribbon-step {
+      position: relative;
+      min-height: 112px;
+      padding: 14px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+    }
+
+    .ribbon-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      transform: translateY(-50%);
+      color: #b8d8cf;
+      font-weight: 800;
+      z-index: 1;
+    }
+
+    .ribbon-label {
+      display: block;
+      margin-bottom: 8px;
+      color: #b8d8cf;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .ribbon-step strong {
+      display: block;
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+
+    .ribbon-step span:last-child {
+      display: block;
+      color: #dce7e4;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .metric {
+      min-height: 108px;
+      padding: 16px;
+    }
+
+    .label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    .metric span:last-child {
+      display: block;
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .architecture-thesis {
+      margin: 0 0 18px;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .architecture-board {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(260px, 0.35fr);
+      gap: 16px;
+      align-items: stretch;
+    }
+
+    .architecture-panel {
+      padding: 18px;
+      min-width: 0;
+    }
+
+    .architecture-panel.device {
+      border-top: 5px solid var(--device);
+    }
+
+    .architecture-panel.host {
+      border-top: 5px solid var(--host);
+    }
+
+    .panel-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel-heading h3 {
+      margin: 0;
+    }
+
+    .panel-heading span {
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .system-flow {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .system-node {
+      position: relative;
+      min-height: 154px;
+      padding: 14px;
+      background: var(--paper);
+    }
+
+    .system-node:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      top: 50%;
+      right: -14px;
+      transform: translateY(-50%);
+      color: var(--device);
+      font-weight: 900;
+      z-index: 1;
+    }
+
+    .node-kicker {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .system-node p,
+    .contract-item p,
+    .decision-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .host-steps {
+      display: grid;
+      gap: 10px;
+    }
+
+    .host-step {
+      padding: 12px 14px;
+      border-left: 4px solid var(--host);
+      background: var(--host-soft);
+      border-radius: 0 8px 8px 0;
+    }
+
+    .host-step strong {
+      display: block;
       margin-bottom: 4px;
     }
-    a {
+
+    .contract-rail {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .contract-item {
+      min-height: 126px;
+      padding: 14px;
+      border-top: 4px solid var(--contract);
+      background: var(--contract-soft);
+    }
+
+    .decision-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .decision-card {
+      padding: 16px;
+    }
+
+    .decision-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .decision-card.warning h3 {
+      color: var(--warn);
+    }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 18px;
+      align-items: stretch;
+    }
+
+    .architecture-map {
+      display: grid;
+      gap: 12px;
+    }
+
+    .layer {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 14px;
+      padding: 16px;
+      border-left: 5px solid var(--accent);
+    }
+
+    .layer-name {
+      color: var(--accent-strong);
+      font-weight: 800;
+    }
+
+    .layer p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .arrow {
+      justify-self: center;
       color: var(--accent);
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .boundary-card {
+      padding: 18px;
+      background: var(--panel-strong);
+      border: 1px solid #c8dfd6;
+      border-radius: 8px;
+    }
+
+    .boundary-card + .boundary-card {
+      margin-top: 12px;
+    }
+
+    .boundary-card.warning {
+      background: var(--warn-soft);
+      border-color: #ebcf8e;
+    }
+
+    .boundary-card.warning h3 {
+      color: var(--warn);
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .flow-step {
+      min-height: 170px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .step-number {
+      display: inline-grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      margin-bottom: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #ffffff;
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .flow-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .callout {
+      padding: 16px 18px;
+      background: var(--warn-soft);
+      border: 1px solid #ebcf8e;
+      border-radius: 8px;
+      color: #513504;
+    }
+
+    .compact-list li {
+      margin-top: 4px;
+    }
+
+    .matrix {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .matrix-card {
+      padding: 16px;
+      background: #fbfcfd;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .matrix-card p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .matrix-card p:last-child {
+      margin-bottom: 0;
+    }
+
+    .supporting-details {
+      margin-top: 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .supporting-details > summary {
+      cursor: pointer;
+      padding: 14px 16px;
+      font-weight: 800;
+    }
+
+    .supporting-details > ul,
+    .supporting-details > .two-column {
+      padding: 0 16px 16px;
+    }
+
+    .architecture-alternates {
+      margin-top: 18px;
+    }
+
+    .architecture-alternates > div {
+      margin-left: 16px;
+      margin-right: 16px;
+    }
+
+    .architecture-alternates > div:last-child {
+      margin-bottom: 16px;
+    }
+
+    details.changelog {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    details.changelog > summary {
+      cursor: pointer;
+      padding: 18px 22px;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    details.changelog > ul {
+      padding: 0 22px 22px 44px;
+    }
+
+    @media (max-width: 960px) {
+      .status-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .architecture-ribbon {
+        grid-template-columns: repeat(5, minmax(120px, 1fr));
+        overflow-x: auto;
+      }
+
+      .architecture,
+      .architecture-glance,
+      .architecture-board,
+      .architecture-brief,
+      .architecture-answer,
+      .blueprint-map,
+      .blueprint-lane,
+      .blueprint-scope,
+      .architecture-command-center,
+      .architecture-focus-strip,
+      .canvas-header,
+      .canvas-lane,
+      .canvas-outcomes,
+      .wall-header,
+      .wall-grid,
+      .architecture-dashboard,
+      .architecture-priority,
+      .snapshot-grid,
+      .flow,
+      .two-column,
+      .contract-rail,
+      .decision-strip,
+      .matrix {
+        grid-template-columns: 1fr;
+      }
+
+      .snapshot-lane {
+        grid-template-columns: 1fr;
+      }
+
+      .lane-steps {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .priority-flow {
+        grid-template-columns: repeat(4, minmax(170px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .glance-spine {
+        grid-template-columns: repeat(5, minmax(150px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .wall-lane {
+        grid-template-columns: 1fr;
+      }
+
+      .wall-node-grid,
+      .wall-lane.contract .wall-node-grid {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .glance-aside {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .blueprint-chain,
+      .blueprint-lane.contract .blueprint-chain {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .system-flow {
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+
+      .flow-step {
+        min-height: auto;
+      }
+    }
+
+    @media (max-width: 620px) {
+      main {
+        padding: 28px 16px 56px;
+      }
+
+      section {
+        padding: 18px;
+      }
+
+      .status-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .architecture-brief {
+        grid-template-columns: 1fr;
+      }
+
+      .command-kpis {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-status {
+        grid-template-columns: 1fr;
+      }
+
+      .dashboard-card {
+        grid-template-columns: 1fr;
+      }
+
+      .architecture-blueprint {
+        padding: 14px;
+      }
+
+      .architecture-wall {
+        padding: 14px;
+      }
+
+      .blueprint-titlebar {
+        display: block;
+      }
+
+      .wall-header,
+      .wall-grid,
+      .wall-lane,
+      .glance-spine,
+      .glance-aside {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .wall-node-grid,
+      .wall-lane.contract .wall-node-grid {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .glance-step {
+        min-height: auto;
+      }
+
+      .glance-step:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
+
+      .blueprint-badge {
+        display: inline-block;
+        margin-top: 10px;
+      }
+
+      .blueprint-chain,
+      .blueprint-lane.contract .blueprint-chain {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .blueprint-lane-title {
+        min-height: auto;
+      }
+
+      .blueprint-node {
+        min-height: auto;
+      }
+
+      .blueprint-node:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
+
+      .architecture-canvas {
+        padding: 14px;
+      }
+
+      .architecture-ribbon {
+        grid-template-columns: repeat(5, 142px);
+      }
+
+      .snapshot-titlebar {
+        display: block;
+      }
+
+      .layer-map-title {
+        display: block;
+      }
+
+      .snapshot-badge {
+        margin-top: 10px;
+        white-space: normal;
+      }
+
+      .lane-steps {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .priority-flow {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .snapshot-step {
+        min-height: auto;
+      }
+
+      .priority-step {
+        min-height: auto;
+      }
+
+      .snapshot-step:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
+
+      .priority-step:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
+
+      .layer {
+        grid-template-columns: 1fr;
+      }
+
+      .panel-heading {
+        display: block;
+      }
+
+      .system-flow {
+        grid-template-columns: 1fr;
+        overflow: visible;
+      }
+
+      .system-node {
+        min-height: auto;
+      }
+
+      .system-node:not(:last-child)::after {
+        content: "↓";
+        top: auto;
+        right: 50%;
+        bottom: -18px;
+        transform: translateX(50%);
+      }
     }
   </style>
 </head>
 <body>
   <main>
-    <h1>Android 性能报告拉取骨架</h1>
-    <p class="goal-line"><strong>一句话目标：</strong>为 flutter_performance_tier 建立 Android 设备侧性能报告生成与主机拉取的最小可验证架构骨架。</p>
+    <header class="hero">
+      <h1>Android report loop 架构主线</h1>
+      <p class="goal-line"><strong>一句话目标：</strong>为 flutter_performance_tier 建立可验证的 Android 性能报告闭环架构。</p>
 
-    <div class="meta" aria-label="Goal metadata">
-      <div><span class="label">状态</span>active</div>
-      <div><span class="label">创建日期</span>2026-06-11</div>
-    </div>
+      <div class="architecture-wall" aria-label="Overall architecture main view">
+        <div class="wall-header">
+          <div>
+            <span class="label">整体架构主视图</span>
+            <h2>一条主线、五层责任、三组合同。</h2>
+            <p>当前方向应该继续收束为 Android-first 本地 report loop：设备侧只生成并私有保存单个 V1 report，主机侧只拉回同一个 report 做 gate、evidence 和 validator；上传、聚合、dashboard 和发布态都放到这个闭环被真机证据证明之后。</p>
+          </div>
+          <div class="wall-status">
+            <strong>当前状态：active，不能关闭</strong>
+            <span>本地合同链路已能验证；还缺真实 Android report、analyzer gate PASS 和填好后的 evidence validator PASS。</span>
+          </div>
+        </div>
+
+        <div class="wall-grid">
+          <div class="wall-map" aria-label="Architecture lanes">
+            <div class="wall-lane device">
+              <div class="wall-lane-label">
+                <strong>设备侧 Runtime</strong>
+                <span>generate and persist</span>
+              </div>
+              <div class="wall-node-grid">
+                <div class="wall-node">
+                  <span class="wall-node-index">01</span>
+                  <strong>Example UI</strong>
+                  <span>Internal Tools 人工触发生成、刷新列表和复制 host commands。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">02</span>
+                  <strong>Dart Service</strong>
+                  <span>组装 tier decision、V1 schema、identity、timestamp 和 signals。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">03</span>
+                  <strong>Platform Store</strong>
+                  <span>通过 MethodChannel 写入 / 列出，并拒绝 malformed native metadata。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">04</span>
+                  <strong>Android Storage</strong>
+                  <span>只写 app-private <code>files/performance_tier_reports/</code>，不扩权限。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="wall-lane host">
+              <div class="wall-lane-label">
+                <strong>主机侧 Evidence</strong>
+                <span>pull and close</span>
+              </div>
+              <div class="wall-node-grid">
+                <div class="wall-node">
+                  <span class="wall-node-index">05</span>
+                  <strong>Pull JSON</strong>
+                  <span>按 copied commands 拉回一个安全、非空、选中的 <code>.json</code> report。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">06</span>
+                  <strong>Analyzer Gate</strong>
+                  <span>输出 <code>android_report_gate.md</code>、summary tables、field check 和 PASS / FAIL。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">07</span>
+                  <strong>Evidence Draft</strong>
+                  <span>从同一个 report + gate 生成可填写的 readiness evidence 草稿。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">08</span>
+                  <strong>Evidence Validator</strong>
+                  <span>填好 evidence 后必须 PASS，才允许讨论 ready / done。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="wall-lane contract">
+              <div class="wall-lane-label">
+                <strong>共享合同护栏</strong>
+                <span>drift control</span>
+              </div>
+              <div class="wall-node-grid">
+                <div class="wall-node">
+                  <span class="wall-node-index">A</span>
+                  <strong>Report contract</strong>
+                  <span>V1 schema、reportId、session、sequence、UTC timestamp 和 Android signals 必须可核对。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">B</span>
+                  <strong>Handoff contract</strong>
+                  <span>safe file name、device path、shell argv、host command 阶段和 CLI options 由共享合同源维护。</span>
+                </div>
+                <div class="wall-node">
+                  <span class="wall-node-index">C</span>
+                  <strong>Readiness contract</strong>
+                  <span>只有真实 report + gate PASS + evidence validator PASS 才能关闭；sample PASS 不替代真机证据。</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="wall-verdict" aria-label="Architecture verdict">
+            <div class="wall-verdict-card primary">
+              <span class="label">结论</span>
+              <strong>方向合理，继续走最小可审计闭环。</strong>
+              <span>当前架构已经把 runtime、storage、host gate 和 evidence 责任拆开，没有必要把第一阶段扩成云监控。</span>
+            </div>
+            <div class="wall-verdict-card">
+              <span class="label">边界</span>
+              <strong>设备内不上传，主机侧不聚合。</strong>
+              <span>Example / service / native store 只服务单 report 生成和保存；host tools 只服务单 report 验收和留证。</span>
+            </div>
+            <div class="wall-verdict-card warning">
+              <span class="label">缺口</span>
+              <strong>唯一关闭缺口是真机 evidence。</strong>
+              <span>下一步不是继续扩功能，而是由真实 Android 设备跑完整链路并补齐 PASS evidence。</span>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <details class="supporting-details architecture-alternates">
+        <summary>展开详细架构蓝图</summary>
+
+      <div class="architecture-blueprint" aria-label="Architecture blueprint">
+        <div class="blueprint-titlebar">
+          <div>
+            <span class="label">架构蓝图</span>
+            <h2>先看整体架构，再看验收细节。</h2>
+            <p>当前项目方向合理：用五层责任、两条链路和一组共享合同，把 Android 设备内 report loop 做成可审计闭环；上传、聚合或发布态都留到这个闭环被真机证据证明之后。</p>
+          </div>
+          <span class="blueprint-badge">architecture-first</span>
+        </div>
+
+        <div class="architecture-answer" aria-label="Architecture answer">
+          <div class="answer-card">
+            <span class="label">架构定位</span>
+            <strong>Android 本地单 report 闭环</strong>
+            <span>当前目标不是云监控平台，而是证明一个真实设备 report 能被拉回、分析、留证并关闭。</span>
+          </div>
+          <div class="answer-card device">
+            <span class="label">设备边界</span>
+            <strong>生成、校验、私有落盘</strong>
+            <span>Example UI、Dart Service、Platform Store、Android Storage 只负责设备内报告链路，不承担上传。</span>
+          </div>
+          <div class="answer-card host">
+            <span class="label">主机边界</span>
+            <strong>拉取、gate、evidence、validator</strong>
+            <span>Host Analysis 只处理同一个安全 JSON，并用脚本合同判断 PASS / FAIL。</span>
+          </div>
+          <div class="answer-card warning">
+            <span class="label">关闭门槛</span>
+            <strong>真机 evidence PASS</strong>
+            <span>本地 sample PASS 只能证明链路形状；ready / done 仍必须等待真实 Android 证据。</span>
+          </div>
+        </div>
+
+        <div class="architecture-glance" aria-label="Architecture at a glance">
+          <div class="glance-main">
+            <span class="label">一眼看懂</span>
+            <h3>这是一条 Android 本地 report 闭环，不是上传系统。</h3>
+            <p>主线只有一条：设备侧生成并保存一个 V1 report，主机侧拉回同一个 report 做 gate、生成 evidence、再由 validator 决定能否关闭。</p>
+            <div class="glance-spine" aria-label="Five architecture layers">
+              <div class="glance-step">
+                <span>01 entry</span>
+                <strong>Example UI</strong>
+                <p>Internal Tools 人工触发生成、刷新列表和复制 host commands。</p>
+              </div>
+              <div class="glance-step">
+                <span>02 domain</span>
+                <strong>Dart Service</strong>
+                <p>组装 tier decision、schema V1、report identity、timestamp 和 signals。</p>
+              </div>
+              <div class="glance-step">
+                <span>03 boundary</span>
+                <strong>Platform Store</strong>
+                <p>MethodChannel 承接写入 / 列表合同，守住 native 边界。</p>
+              </div>
+              <div class="glance-step">
+                <span>04 storage</span>
+                <strong>Android Storage</strong>
+                <p>只写 app-private <code>files/performance_tier_reports/</code>。</p>
+              </div>
+              <div class="glance-step">
+                <span>05 evidence</span>
+                <strong>Host Analysis</strong>
+                <p>拉回单个安全 JSON，跑 gate、evidence builder 和 validator。</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="glance-aside" aria-label="Current architecture summary">
+            <div class="glance-fact primary">
+              <span class="label">当前判断</span>
+              <strong>方向合理，继续收束。</strong>
+              <span>先证明 Android report loop 可审计，再把上传、聚合或 dashboard 拆成后续目标。</span>
+            </div>
+            <div class="glance-fact">
+              <span class="label">核心护栏</span>
+              <strong>共享合同防漂移。</strong>
+              <span>schema、identity、signals、time、safe report file、App used 和 host command 顺序由脚本合同锁定。</span>
+            </div>
+            <div class="glance-fact warning">
+              <span class="label">关闭缺口</span>
+              <strong>还缺真实 Android evidence。</strong>
+              <span>必须拿到真机 report、gate PASS、填好 evidence，并让 evidence validator PASS。</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="blueprint-map">
+          <div class="blueprint-lanes" aria-label="Architecture swimlanes">
+            <div class="blueprint-lane device">
+              <div class="blueprint-lane-title">
+                <strong>设备侧运行链路</strong>
+                <span>runtime ownership</span>
+              </div>
+              <div class="blueprint-chain" aria-label="Device runtime chain">
+                <div class="blueprint-node">
+                  <span>01 trigger</span>
+                  <strong>Example UI</strong>
+                  <span>Internal Tools 人工触发生成、列表和复制主机命令。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>02 compose</span>
+                  <strong>Dart Service</strong>
+                  <span>封装 tier decision、V1 identity、timestamp 和 signals。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>03 boundary</span>
+                  <strong>Platform Store</strong>
+                  <span>MethodChannel 写入/列出，拒绝 malformed metadata。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>04 persist</span>
+                  <strong>Android Storage</strong>
+                  <span>只写 app-private <code>files/performance_tier_reports/</code>。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="blueprint-lane host">
+              <div class="blueprint-lane-title">
+                <strong>主机侧验收链路</strong>
+                <span>evidence ownership</span>
+              </div>
+              <div class="blueprint-chain" aria-label="Host evidence chain">
+                <div class="blueprint-node">
+                  <span>05 pull</span>
+                  <strong>Pull JSON</strong>
+                  <span>按 copied host commands 拉回单个安全非空 report。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>06 gate</span>
+                  <strong>Analyzer Gate</strong>
+                  <span>输出 PASS / FAIL、summary tables 和字段核对。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>07 draft</span>
+                  <strong>Evidence Builder</strong>
+                  <span>从同一个 report + gate 生成可填写证据草稿。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>08 close</span>
+                  <strong>Evidence Validator</strong>
+                  <span>填好后必须 PASS，才可作为 ready / done 依据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="blueprint-lane contract">
+              <div class="blueprint-lane-title">
+                <strong>共享合同护栏</strong>
+                <span>drift control</span>
+              </div>
+              <div class="blueprint-chain" aria-label="Shared architecture contracts">
+                <div class="blueprint-node">
+                  <span>schema</span>
+                  <strong>V1 only</strong>
+                  <span>只接受当前 performance report schema。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>identity</span>
+                  <strong>Report identity</strong>
+                  <span>reportId 绑定 session + sequence。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>signals</span>
+                  <strong>Android signals</strong>
+                  <span>OS、RAM、电源、内存压力和 thermal 可核对。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>time</span>
+                  <strong>UTC ordering</strong>
+                  <span>generatedAt 不得早于 decision timestamp。</span>
+                </div>
+                <div class="blueprint-node">
+                  <span>handoff</span>
+                  <strong>Command order</strong>
+                  <span>host command 阶段、<code>--android-report-gate</code>、<code>--analysis-output-dir</code>、<code>--application-id</code>、<code>--output</code> 和显式 branch / commit 由合同锁定。</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside class="blueprint-sidebar" aria-label="Current architecture stance">
+            <div class="blueprint-side-card primary">
+              <span class="label">当前判断</span>
+              <strong>方向合理，架构边界清楚。</strong>
+              <span>最小闭环足以证明 Android report loop 的价值，不需要第一阶段引入云上传或 dashboard。</span>
+            </div>
+            <div class="blueprint-side-card">
+              <span class="label">已落地</span>
+              <strong>本地合同链路已能验证。</strong>
+              <span>package / example / analyzer / evidence builder / validator 的本地护栏已经覆盖主要边界。</span>
+            </div>
+            <div class="blueprint-side-card warning">
+              <span class="label">未关闭</span>
+              <strong>还缺真实 Android evidence。</strong>
+              <span>必须由真机生成 report、主机 gate PASS、填好 evidence 并 validator PASS 后才能 ready / done。</span>
+            </div>
+          </aside>
+        </div>
+
+        <div class="blueprint-scope" aria-label="Current phase scope">
+          <div class="blueprint-scope-card">
+            <span class="label">本阶段只做</span>
+            <strong>单 report 可审计闭环</strong>
+            <span>设备生成、私有落盘、主机拉回、gate、evidence、validator。</span>
+          </div>
+          <div class="blueprint-scope-card">
+            <span class="label">本阶段不做</span>
+            <strong>上传、聚合、云监控、自动清理</strong>
+            <span>这些方向必须等当前 report loop 被真机证据证明后再拆新目标。</span>
+          </div>
+          <div class="blueprint-scope-card warning">
+            <span class="label">关闭门槛</span>
+            <strong>真实设备证据，不是 sample PASS</strong>
+            <span>本地样例只能证明链路形状，不能替代 run-as、文件 owner 和 OEM 行为证据。</span>
+          </div>
+        </div>
+      </div>
+      </details>
+
+      <details class="supporting-details architecture-alternates">
+        <summary>展开架构判断详情</summary>
+
+      <div class="architecture-command-center" aria-label="Architecture decision command center">
+        <div class="command-main">
+          <span class="label">架构判断</span>
+          <h2>方向合理，但必须收束到“设备内报告 + 主机证据”这一条主线。</h2>
+          <p>当前项目不缺功能想象，真正需要证明的是一条可审计闭环：Android 设备生成单个 V1 report，写入 app-private 目录，主机按固定 handoff 拉回，analyzer gate 判定，再由 evidence validator 关闭证据。上传、聚合、dashboard 和发布态都应等这条链路被真机证据证明后再讨论。</p>
+          <div class="command-kpis" aria-label="Architecture decision metrics">
+            <div class="command-kpi">
+              <strong>主线</strong>
+              <span>Android-first report loop，不把第一阶段扩成云端监控系统。</span>
+            </div>
+            <div class="command-kpi">
+              <strong>状态</strong>
+              <span><code>active</code>；本地合同和样例链路可验证，真机证据未补齐。</span>
+            </div>
+            <div class="command-kpi">
+              <strong>关闭标准</strong>
+              <span>真实 Android report + analyzer gate PASS + evidence validator PASS。</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="command-side" aria-label="Architecture decision side notes">
+          <div class="command-card primary">
+            <span class="label">为什么合理</span>
+            <strong>职责层次清楚</strong>
+            <span>Example UI、Dart Service、Platform Store、Android Storage、Host Analysis 各自只承担一个边界，后续扩展不会混在验收主线里。</span>
+          </div>
+          <div class="command-card warning">
+            <span class="label">最大风险</span>
+            <strong>用本地 PASS 替代真机证据</strong>
+            <span>本地 sample 只能证明合同形状；不能证明真实 app 私有目录、run-as、文件 owner 或 OEM 行为。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="architecture-focus-strip" aria-label="Architecture focus strip">
+        <div class="focus-card device">
+          <span class="label">1. Runtime</span>
+          <strong>设备侧只生成和落盘</strong>
+          <span>UI 触发、Dart 组装、MethodChannel 写入、Android 私有目录保存；不承担上传和聚合。</span>
+        </div>
+        <div class="focus-card host">
+          <span class="label">2. Host</span>
+          <strong>主机侧只判定和留证</strong>
+          <span>复制出的命令拉回单个安全 JSON，analyzer gate 与 evidence validator 给出 PASS / FAIL。</span>
+        </div>
+        <div class="focus-card contract">
+          <span class="label">3. Contracts</span>
+          <strong>合同源阻止漂移</strong>
+          <span>schema、identity、signals、time、handoff order、<code>--application-id</code> 和显式 branch / commit 必须被脚本和文档共同锁定。</span>
+        </div>
+        <div class="focus-card warning">
+          <span class="label">4. Next</span>
+          <strong>下一步只补真机 evidence</strong>
+          <span>生成 report、拉回 JSON、跑 gate、生成并填好 evidence，validator PASS 后再讨论 ready / done。</span>
+        </div>
+      </div>
+
+      <div class="architecture-canvas" aria-label="Architecture overview canvas">
+        <div class="canvas-header">
+          <div>
+            <span class="label">五层链路</span>
+            <h2>五层责任，一条可关闭的 Android report 闭环。</h2>
+            <p>当前 goal 的主判断是架构判断：Example UI 只负责人工触发，Dart Service 只负责组装 V1 report，Platform Store 守住 native 边界，Android Storage 只写 app-private 文件，Host Analysis 负责拉取、gate、evidence 和关闭判定。</p>
+          </div>
+          <div class="canvas-status">
+            <strong>当前状态：active</strong>
+            <span>方向合理，边界清楚；还缺真实 Android 设备生成 report、主机 gate PASS 和 evidence validator PASS，不能标记 done。</span>
+          </div>
+        </div>
+
+        <div class="canvas-lanes" aria-label="Architecture lanes">
+          <div class="canvas-lane device">
+            <div class="canvas-lane-title">
+              <strong>设备侧运行链路</strong>
+              <span>runtime boundary</span>
+            </div>
+            <div class="canvas-chain" aria-label="Device runtime responsibilities">
+              <div class="canvas-node">
+                <strong>Example UI</strong>
+                <span>人工触发 Generate report、List reports、Copy host commands。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Dart Service</strong>
+                <span>组装当前 tier decision、V1 report identity 和 generatedAt。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Platform Store</strong>
+                <span>MethodChannel 写入和列出 metadata，拒绝 malformed 边界。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Android Storage</strong>
+                <span>只写 app-private <code>files/performance_tier_reports/</code>。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="canvas-lane host">
+            <div class="canvas-lane-title">
+              <strong>主机侧验收链路</strong>
+              <span>evidence boundary</span>
+            </div>
+            <div class="canvas-chain" aria-label="Host validation responsibilities">
+              <div class="canvas-node">
+                <strong>Pull JSON</strong>
+                <span>复制出的 host commands 拉回单个安全非空 <code>.json</code>。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Analyzer Gate</strong>
+                <span>输出 PASS / FAIL、Gate Summary、表格和字段核对。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Evidence Draft</strong>
+                <span>由 report + gate 生成绑定单 report 的证据草稿。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Evidence Validator</strong>
+                <span>填好后必须 PASS，才可作为 ready / done 依据。</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="canvas-lane contract">
+            <div class="canvas-lane-title">
+              <strong>合同护栏</strong>
+              <span>drift control</span>
+            </div>
+            <div class="canvas-chain" aria-label="Architecture contracts">
+              <div class="canvas-node">
+                <strong>Schema</strong>
+                <span>只接受当前 V1 <code>flutter_performance_tier.performance_report</code>。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Identity</strong>
+                <span><code>reportId</code> 必须匹配 session + sequence。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Signals</strong>
+                <span>Android device、OS、RAM、电源、内存和温度可核对。</span>
+              </div>
+              <div class="canvas-node">
+                <strong>Handoff</strong>
+                <span>host command section、gate 字段、脚本路径和执行顺序由合同源固定。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="canvas-outcomes" aria-label="Architecture outcomes">
+          <div class="canvas-fact">
+            <span class="label">架构要证明</span>
+            <strong>真实 report 能走完整闭环</strong>
+            <span>一个 Android 真机 report 从设备私有目录拉回主机，并通过 gate 与 evidence validator。</span>
+          </div>
+          <div class="canvas-fact">
+            <span class="label">架构不扩展</span>
+            <strong>不把第一阶段做成上传或聚合系统</strong>
+            <span>upload probe、云 dashboard、批量聚合、自动 retention 都不进入当前 ready 定义。</span>
+          </div>
+          <div class="canvas-fact warning">
+            <span class="label">关闭门槛</span>
+            <strong>没有真机 evidence 就不关闭</strong>
+            <span>本地样例 PASS 只能证明链路形状，不能替代真实 Android 文件、gate 和 evidence。</span>
+          </div>
+        </div>
+      </div>
+
+      </details>
+
+      <details class="supporting-details architecture-alternates">
+        <summary>展开备用架构视图</summary>
+
+      <div class="architecture-priority" aria-label="Architecture priority view">
+        <div class="priority-main">
+          <span class="label">架构优先视图</span>
+          <h2>先把本地 report loop 做成可信架构，再讨论上传、聚合或发布态。</h2>
+          <p>当前方向的合理性取决于四个清晰边界：设备内只生成和私有保存报告；主机侧只做离线 gate 和 evidence；共享合同阻止 schema、字段和命令顺序漂移；最后用真实 Android 证据关闭，而不是用本地样例替代。</p>
+
+          <div class="priority-flow" aria-label="Architecture priority flow">
+            <div class="priority-step device">
+              <span class="priority-index">01 runtime</span>
+              <strong>设备内运行闭环</strong>
+              <span>Example UI 触发，Dart Service 组装当前 V1 report，Platform Store 守住 native metadata 边界。</span>
+            </div>
+            <div class="priority-step device">
+              <span class="priority-index">02 storage</span>
+              <strong>Android 私有落盘</strong>
+              <span>native 只写 app-private <code>files/performance_tier_reports/</code>，不扩大权限，不引入共享目录。</span>
+            </div>
+            <div class="priority-step host">
+              <span class="priority-index">03 host gate</span>
+              <strong>主机侧验收</strong>
+              <span>复制出的命令拉回单个安全 JSON，analyzer gate 输出 PASS / FAIL、summary tables 和字段核对。</span>
+            </div>
+            <div class="priority-step contract">
+              <span class="priority-index">04 evidence</span>
+              <strong>证据合同关闭</strong>
+              <span>evidence builder + validator 绑定同一个 report；只有真实 gate PASS 和 validator PASS 才能关闭。</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="priority-side" aria-label="Architecture priority decisions">
+          <div class="priority-fact primary">
+            <span class="label">当前判断</span>
+            <strong>方向合理，但要收束在五层架构。</strong>
+            <span>不要把第一阶段做成 upload probe、云监控平台或批量聚合系统。</span>
+          </div>
+          <div class="priority-fact">
+            <span class="label">核心合同</span>
+            <strong>schema、identity、signals、time、handoff order</strong>
+            <span>这些合同必须由代码、gate、evidence template 和 validator 共同维护。</span>
+          </div>
+          <div class="priority-fact warning">
+            <span class="label">关闭缺口</span>
+            <strong>现在仍不能标记 done。</strong>
+            <span>还缺用户在 Android 真机上生成 report、拉回 JSON、跑出 gate PASS，并填回 validator PASS 的 evidence。</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="architecture-dashboard" aria-label="Architecture decision dashboard">
+        <div class="dashboard-main">
+          <span class="label">架构驾驶舱</span>
+          <h2>先验证本地 Android report loop，再扩展上传或聚合。</h2>
+          <p>当前项目方向是合理的，但核心不是继续叠功能，而是把五层链路稳定下来：Example UI 触发，Dart Service 生成 V1 report，Platform Store 守住 native 边界，Android Storage 私有落盘，Host Analysis 拉回并生成可关闭证据。</p>
+          <div class="dashboard-status" aria-label="Architecture decision status">
+            <div class="dashboard-pill">
+              <strong>主线</strong>
+              <span>设备内 report 生成 + 主机侧 evidence 验收。</span>
+            </div>
+            <div class="dashboard-pill">
+              <strong>状态</strong>
+              <span><code>active</code>，本地链路已覆盖，真机证据未补齐。</span>
+            </div>
+            <div class="dashboard-pill">
+              <strong>关闭条件</strong>
+              <span>真实 Android report、gate PASS、evidence validator PASS。</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-side" aria-label="Architecture focus areas">
+          <div class="dashboard-card">
+            <span class="dashboard-tag">Boundary</span>
+            <div>
+              <strong>设备内只做生成与私有存储</strong>
+              <span>不在运行时承担上传、聚合、清理或发布态判断，避免第一阶段边界发散。</span>
+            </div>
+          </div>
+          <div class="dashboard-card">
+            <span class="dashboard-tag">Contract</span>
+            <div>
+              <strong>V1 schema / identity / signal / time / handoff order 是硬合同</strong>
+              <span>report 字段和 host commands 顺序都必须能被 analyzer 与 evidence validator 核对，不能依赖人工解释。</span>
+            </div>
+          </div>
+          <div class="dashboard-card warning">
+            <span class="dashboard-tag">Gap</span>
+            <div>
+              <strong>现在不该关闭 goal</strong>
+              <span>Codex 已完成允许范围内的本地验证；剩余 Android 真机生成、拉取和 gate 证据必须由用户执行。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="architecture-snapshot" aria-label="Architecture at a glance">
+        <div class="snapshot-titlebar">
+          <div>
+            <span class="label">一屏架构</span>
+            <h2>设备内生成报告，主机侧验收证据</h2>
+          </div>
+          <span class="snapshot-badge">current target architecture</span>
+        </div>
+
+        <div class="snapshot-grid">
+          <div class="snapshot-lanes">
+            <div class="snapshot-lane device">
+              <div class="lane-label">
+                <strong>设备内链路</strong>
+                <span>runtime loop</span>
+              </div>
+              <div class="lane-steps" aria-label="Device runtime loop">
+                <div class="snapshot-step">
+                  <strong>Example UI</strong>
+                  <span>Internal Tools 触发生成、列表和复制命令。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Dart Service</strong>
+                  <span>封装 tier decision，生成 V1 report identity。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Platform Store</strong>
+                  <span>MethodChannel 写入和列出，拒绝 malformed metadata。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Android Storage</strong>
+                  <span>只写 app-private 安全 .json report。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="snapshot-lane host">
+              <div class="lane-label">
+                <strong>主机验收链路</strong>
+                <span>evidence loop</span>
+              </div>
+              <div class="lane-steps" aria-label="Host evidence loop">
+                <div class="snapshot-step">
+                  <strong>Pull JSON</strong>
+                  <span>复制出的 host commands 按合同顺序拉回单个非空 report。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Analyzer Gate</strong>
+                  <span>输出 PASS / FAIL、summary tables 和字段核对。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Evidence Draft</strong>
+                  <span>从 report + gate 生成人工证据草稿。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Evidence Validator</strong>
+                  <span>确认填好证据后才能作为 ready / done 依据。</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="snapshot-lane gate">
+              <div class="lane-label">
+                <strong>合同护栏</strong>
+                <span>architecture contracts</span>
+              </div>
+              <div class="lane-steps" aria-label="Architecture contracts">
+                <div class="snapshot-step">
+                  <strong>Schema</strong>
+                  <span>只接受当前 V1 performance report。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Identity</strong>
+                  <span>report id 必须匹配 session + sequence。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Signals</strong>
+                  <span>Android 设备、OS、RAM、电源、内存和温度可核对。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Time</strong>
+                  <span>generatedAt 必须是 UTC date-time，且不能早于 decision timestamp。</span>
+                </div>
+                <div class="snapshot-step">
+                  <strong>Handoff</strong>
+                  <span>host command section、必含片段、脚本路径和阶段顺序由 evidence contract 固定。</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="snapshot-sidebar" aria-label="Current architecture stance">
+            <div class="snapshot-note">
+              <strong>当前判断</strong>
+              <span>方向合理：先把本地 report loop 和人工可审计证据跑通，再讨论上传、聚合和自动化。</span>
+            </div>
+            <div class="snapshot-note warning">
+              <strong>本阶段不做</strong>
+              <span>不把云上传、批量聚合、自动清理或 consumer-ready 发布状态放进第一阶段主线。</span>
+            </div>
+            <div class="snapshot-note warning">
+              <strong>关闭缺口</strong>
+              <span>还缺 Android 真机生成 report、主机 gate PASS 和填好后的 evidence validator PASS。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="architecture-brief" aria-label="Architecture reading guide">
+        <div class="brief-card primary">
+          <span class="label">架构结论</span>
+          <strong>方向合理，但目标要收束在可信 report loop。</strong>
+          <p>本阶段最有价值的不是继续扩展上传或聚合，而是把设备内报告、私有存储、主机 gate 和 evidence validator 打成一条可审计链路。</p>
+        </div>
+        <div class="brief-card">
+          <span class="label">运行边界</span>
+          <strong>设备内只负责生成和保存</strong>
+          <p>Example UI、Dart Service、Platform Store、Android Storage 共同完成单个 V1 report 的生成、校验和 app-private 落盘。</p>
+        </div>
+        <div class="brief-card">
+          <span class="label">证据边界</span>
+          <strong>主机侧只负责判定和留证</strong>
+          <p>host commands 固定拉回一个安全 <code>.json</code>，再由 analyzer gate、evidence builder、validator 给出 PASS / FAIL。</p>
+          <p>命令块的 section、脚本路径、gate status 检查和执行顺序由 <code>tool/android_report_evidence_contract.py</code> 统一维护。</p>
+        </div>
+        <div class="brief-card">
+          <span class="label">关闭边界</span>
+          <strong>没有真机证据就不关闭</strong>
+          <p>本地测试只能证明架构链路可执行；ready / done 仍必须等真实 Android report、gate PASS 和 evidence PASS。</p>
+        </div>
+      </div>
+
+      </details>
+
+      <div id="architecture-map" class="architecture-layer-map" aria-label="Architecture layer map">
+        <div class="layer-map-title">
+          <div>
+            <span class="label">主视图</span>
+            <h2>五层职责、数据产物和关闭缺口</h2>
+          </div>
+          <p>这张表是当前 goal 的架构地图：每层只列 Input、Output、Guardrail 和 Evidence / Gap，用来判断方向是否收束。</p>
+        </div>
+
+        <div class="layer-map-scroll">
+          <div class="layer-map-row header">
+            <div class="layer-map-cell">Layer</div>
+            <div class="layer-map-cell">Input</div>
+            <div class="layer-map-cell">Output</div>
+            <div class="layer-map-cell">Guardrail</div>
+            <div class="layer-map-cell">Evidence / Gap</div>
+          </div>
+          <div class="layer-map-row">
+            <div class="layer-map-cell layer-map-layer device">
+              <strong>1. Example UI</strong>
+              <span>人工验收入口</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>Internal Tools 操作</strong>
+              <span>Generate report、List reports、Copy host commands。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>可执行 handoff</strong>
+              <span>生成 report，列出安全候选，并复制完整主机命令。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>无目标时不复制</strong>
+              <span>只选择安全 <code>.json</code> report，命令参数 shell-quote。</span>
+            </div>
+            <div class="layer-map-cell warning">
+              <strong>本地测试已覆盖</strong>
+              <span>仍需要用户在 Android 真机上触发一次。</span>
+            </div>
+          </div>
+          <div class="layer-map-row">
+            <div class="layer-map-cell layer-map-layer device">
+              <strong>2. Dart Service</strong>
+              <span>report 组装层</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>TierDecision + signals</strong>
+              <span>当前 tier、confidence、runtime 状态和设备信号。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>V1 PerformanceReport</strong>
+              <span>schema、source、generatedAt、session、sequence、reportId。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>schema / identity / time</strong>
+              <span>model 构造阶段拒绝非 V1、空白身份和倒挂时间。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>package tests 已覆盖</strong>
+              <span>作为 Host Analysis 可核对字段的上游合同。</span>
+            </div>
+          </div>
+          <div class="layer-map-row">
+            <div class="layer-map-cell layer-map-layer device">
+              <strong>3. Platform Store</strong>
+              <span>Dart/native 边界</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>report JSON</strong>
+              <span>Dart 通过 MethodChannel 请求写入或列出 report。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>write/list metadata</strong>
+              <span>fileName、relativePath、bytes、modifiedAt。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>拒绝 malformed metadata</strong>
+              <span>非字符串 key、空白路径、0 bytes 和无序列表会被规范化或拒绝。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>store tests 已覆盖</strong>
+              <span>防止 Host Analysis 拿到不可拉取目标。</span>
+            </div>
+          </div>
+          <div class="layer-map-row">
+            <div class="layer-map-cell layer-map-layer device">
+              <strong>4. Android Storage</strong>
+              <span>设备私有存储</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>native write call</strong>
+              <span>当前 V1 schemaVersion、非空 reportId 和 JSON content。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>app-private report</strong>
+              <span><code>files/performance_tier_reports/</code> 下的安全 JSON 文件。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>权限最小化</strong>
+              <span>不引入上传、共享存储、后台清理或额外权限。</span>
+            </div>
+            <div class="layer-map-cell warning">
+              <strong>native contract 已测</strong>
+              <span>真实 owner、run-as 和 OEM 行为仍需真机证据。</span>
+            </div>
+          </div>
+          <div class="layer-map-row">
+            <div class="layer-map-cell layer-map-layer host">
+              <strong>5. Host Analysis</strong>
+              <span>主机验收层</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>单个 pulled report</strong>
+              <span>从 app-private 目录拉回的非空安全 <code>.json</code>。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>gate + evidence</strong>
+              <span><code>android_report_gate.md</code>、evidence draft、validator PASS / FAIL。</span>
+            </div>
+            <div class="layer-map-cell">
+              <strong>共享 gate / evidence 合同</strong>
+              <span>gate section、Checks、summary tables、field check、Identity Checklist、Issues、host command 片段和阶段顺序不允许漂移。</span>
+            </div>
+            <div class="layer-map-cell warning">
+              <strong>sample chain 已通过</strong>
+              <span>关闭 goal 仍必须等待真实 Android report gate PASS。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="status-grid" aria-label="Goal status">
+        <div class="metric">
+          <span class="label">状态</span>
+          <strong>active</strong>
+          <span>本页按整体架构总图优先阅读；当前仍等待真机报告证据。</span>
+        </div>
+        <div class="metric">
+          <span class="label">架构焦点</span>
+          <strong>五层责任 + 主机验收</strong>
+          <span>先稳定 Example UI、Dart Service、Platform Store、Android Storage、Host Analysis 五层边界。</span>
+        </div>
+        <div class="metric">
+          <span class="label">已验证</span>
+          <strong>package / example / parser / evidence tests</strong>
+          <span>允许范围内的本地架构链路和 evidence 护栏已通过。</span>
+        </div>
+        <div class="metric">
+          <span class="label">下一步</span>
+          <strong>等待真机 gate 证据</strong>
+          <span>拉回 JSON 后运行 android-report-gate。</span>
+        </div>
+      </div>
+    </header>
 
     <section>
-      <h2>当前状态</h2>
-      <p>active：Android-first 性能报告最小闭环骨架已完成本地实现和非设备测试验证；example 的 Internal Tools 已提供生成报告、列出报告和复制 adb 拉取命令的入口，离线分析脚本已将 V1 performance report 作为一等输入。由于项目规则禁止 Codex 执行 adb、设备运行和 `@test-android-apps` 采集，本目标仍保持 active，等待用户侧真机生成报告并通过 adb 或 `@test-android-apps` 拉取验证。</p>
+      <h2>整体架构图</h2>
+      <p class="architecture-thesis">当前方向是一个 Android-first 的 report loop：设备内只负责生成、校验并保存 V1 JSON；主机侧只负责拉取、分析、生成 evidence 和判定 PASS / FAIL。云上传、批量聚合和自动清理都不进入第一阶段主线。</p>
+
+      <div class="architecture-board" aria-label="Overall architecture board">
+        <div class="architecture-panel device">
+          <div class="panel-heading">
+            <h3>设备内链路</h3>
+            <span>runtime ownership</span>
+          </div>
+          <div class="system-flow" aria-label="Runtime architecture">
+            <div class="system-node">
+              <span class="node-kicker">入口</span>
+              <h3>Example UI</h3>
+              <p><code>Internal Tools</code> 触发 Generate report、List reports、Copy host commands，是人工真机验收入口。</p>
+            </div>
+            <div class="system-node">
+              <span class="node-kicker">决策封装</span>
+              <h3>Dart Service</h3>
+              <p><code>DefaultPerformanceTierService</code> 读取当前 tier decision，组装 V1 <code>PerformanceReport</code> 和 service metadata。</p>
+            </div>
+            <div class="system-node">
+              <span class="node-kicker">边界校验</span>
+              <h3>Platform Store</h3>
+              <p><code>MethodChannel</code> 写入和列出 report；Dart 侧拒绝 malformed metadata，并按 <code>modifiedAt</code> 规范化列表。</p>
+            </div>
+            <div class="system-node">
+              <span class="node-kicker">设备存储</span>
+              <h3>Android Storage</h3>
+              <p>native 只写 app-private <code>files/performance_tier_reports/</code>，复用安全 <code>.json</code> 文件名边界，不扩大权限。</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="architecture-panel host">
+          <div class="panel-heading">
+            <h3>主机验收链路</h3>
+            <span>evidence ownership</span>
+          </div>
+          <div class="host-steps" aria-label="Host validation architecture">
+            <div class="host-step">
+              <strong>1. Pull report</strong>
+              <span>复制出的 host commands 拉回非空 JSON。</span>
+            </div>
+            <div class="host-step">
+              <strong>2. Analyzer gate</strong>
+              <span><code>--android-report-gate</code> 输出 Gate Summary、report 表、signal 表和字段核对。</span>
+            </div>
+            <div class="host-step">
+              <strong>3. Evidence draft</strong>
+              <span><code>build_android_report_evidence.py</code> 从 report + gate 生成草稿。</span>
+            </div>
+            <div class="host-step">
+              <strong>4. Evidence validator</strong>
+              <span><code>validate_android_report_evidence.py</code> 阻止空模板、FAIL gate、unsafe 文件名或 report / signal 表格不一致被当作 ready 证据。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="contract-rail" aria-label="Architecture contract rail">
+        <div class="contract-item">
+          <span class="node-kicker">schema contract</span>
+          <h3>只接受当前 V1</h3>
+          <p><code>flutter_performance_tier.performance_report</code> + integer <code>schemaVersion: 1</code> 是唯一 ready 候选。</p>
+        </div>
+        <div class="contract-item">
+          <span class="node-kicker">identity contract</span>
+          <h3>report 身份可追踪</h3>
+          <p><code>reportId</code> 必须匹配 <code>serviceSessionId</code> + <code>reportSequence</code>，并在 gate 输入内唯一。</p>
+        </div>
+        <div class="contract-item">
+          <span class="node-kicker">signal contract</span>
+          <h3>Android 信号可核对</h3>
+          <p>device model、OS version、RAM、SDK、thermal、low-power、memory pressure 进入 report 与 gate 表格。</p>
+        </div>
+        <div class="contract-item">
+          <span class="node-kicker">time contract</span>
+          <h3>时间顺序可信</h3>
+          <p><code>generatedAt</code> 与 <code>decision.decidedAt</code> 必须是可信 UTC 时间，且报告生成时间不能早于决策时间。</p>
+        </div>
+      </div>
+
+      <div class="decision-strip" aria-label="Architecture decisions">
+        <div class="decision-card">
+          <h3>核心判断</h3>
+          <p>当前方向合理：先把设备侧结构化报告、私有目录落盘、主机拉取、离线 gate 和 evidence 校验跑通，再讨论上传或聚合。</p>
+        </div>
+        <div class="decision-card">
+          <h3>边界取舍</h3>
+          <p>第一阶段不是 OSS upload probe，也不是云端链路；主线是可重复、可审计、权限最小的 Android report loop。</p>
+        </div>
+        <div class="decision-card warning">
+          <h3>BREAKING CHANGE</h3>
+          <p><code>PerformanceTierService</code> 已新增 <code>writeCurrentReport</code> 和 <code>listPerformanceReports</code>；自定义实现类、report assembler、mock 和测试替身需要补齐新方法，并遵守 V1 schema、identity 和 timestamp 合同。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>数据流</h2>
+      <div class="flow" aria-label="Report data flow">
+        <div class="flow-step">
+          <span class="step-number">1</span>
+          <h3>采集信号</h3>
+          <p>Android plugin 通过 <code>collectDeviceSignals</code> 提供设备与运行时信号。</p>
+        </div>
+        <div class="flow-step">
+          <span class="step-number">2</span>
+          <h3>生成决策</h3>
+          <p>Dart engine 输出 <code>TierDecision</code>，包含 tier、confidence、reasons、policies 和 signal snapshot。</p>
+        </div>
+        <div class="flow-step">
+          <span class="step-number">3</span>
+          <h3>封装报告</h3>
+          <p>Dart service 生成 V1 <code>flutter_performance_tier.performance_report</code>，附带 source、时间和 metadata。</p>
+        </div>
+        <div class="flow-step">
+          <span class="step-number">4</span>
+          <h3>设备落盘</h3>
+          <p>Android native 写入 app-private report 目录，并返回 fileName、relativePath、bytes。</p>
+        </div>
+        <div class="flow-step">
+          <span class="step-number">5</span>
+          <h3>主机分析</h3>
+          <p>adb 拉取 JSON 后，analyzer 输出 session CSV、结构化日志、parse issue 结果，以及包含 Gate Summary、report / signal 表格、字段核对和 identity checklist 的 <code>android_report_gate.md</code>。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>架构责任矩阵</h2>
+      <div class="matrix" aria-label="Architecture responsibility matrix">
+        <div class="matrix-card">
+          <h3>Example UI</h3>
+          <p><strong>职责：</strong>把真机验收变成可重复人工流程。</p>
+          <p><strong>证据：</strong>按钮状态、host commands、widget/controller tests。</p>
+        </div>
+        <div class="matrix-card">
+          <h3>Dart Service</h3>
+          <p><strong>职责：</strong>封装当前 tier decision，稳定生成 report identity。</p>
+          <p><strong>证据：</strong>service report tests、model contract tests。</p>
+        </div>
+        <div class="matrix-card">
+          <h3>Platform Store</h3>
+          <p><strong>职责：</strong>守住 Dart/native 边界，拒绝 malformed metadata。</p>
+          <p><strong>证据：</strong>MethodChannel store tests。</p>
+        </div>
+        <div class="matrix-card">
+          <h3>Android Storage</h3>
+          <p><strong>职责：</strong>只写 app-private JSON report，不扩大权限边界。</p>
+          <p><strong>证据：</strong>native source contract tests。</p>
+        </div>
+        <div class="matrix-card">
+          <h3>Host Analysis</h3>
+          <p><strong>职责：</strong>把真机文件转成 PASS / FAIL 和可读表格。</p>
+          <p><strong>证据：</strong>analyzer gate tests、真机 evidence template。</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>架构状态板</h2>
+      <div class="decision-strip" aria-label="Architecture status summary">
+        <div class="decision-card">
+          <h3>已落地到代码</h3>
+          <p>V1 report model、service write/list、MethodChannel store、Android private storage、host commands、analyzer gate、evidence builder 和 validator 已连成一条链。</p>
+        </div>
+        <div class="decision-card">
+          <h3>已落地到文档</h3>
+          <p><code>SPEC.md</code>、<code>TEST.md</code>、<code>README.md</code>、<code>example/README.md</code> 和本 goal 都以五层 report loop 为主线。</p>
+        </div>
+        <div class="decision-card warning">
+          <h3>仍未完成</h3>
+          <p>还缺 Android 真机生成、拉取、gate PASS、evidence markdown PASS 和人工回填；因此当前状态保持 <code>active</code>。</p>
+        </div>
+      </div>
+
+      <details class="supporting-details">
+        <summary>展开完整完成清单</summary>
+      <div class="two-column">
+        <div class="card">
+          <h3>已落地</h3>
+          <ul class="compact-list">
+            <li>V1 <code>PerformanceReport</code> model、write result、file metadata。</li>
+            <li>Dart service 的 report 写入和列表入口。</li>
+            <li>Android plugin 的 <code>writePerformanceReport</code> / <code>listPerformanceReports</code> 方法；native write 会拒绝非当前 V1 <code>schemaVersion</code> 或空白 <code>reportId</code> 的直接 MethodChannel 调用；native list 复用 write 的安全 <code>.json</code> 文件名边界，不暴露异常 JSON 文件名作为 host-pull 候选；Dart MethodChannel store 要求 native metadata 使用非空 <code>fileName</code> / <code>relativePath</code> 和正 integer <code>bytes</code>，要求 listed reports 是 string-keyed map metadata 列表，会拒绝 malformed list item 和非字符串 metadata key，并将合法 reports 按 <code>modifiedAt</code> 降序稳定排序，缺失时间的报告排在后面。</li>
+            <li>Android / iOS native signal 已补齐 <code>osVersion</code>；Android native signal 已补齐 thermal state、thermal state level 和 low-power mode，进入 V1 report 的 <code>DeviceSignals</code>。</li>
+            <li>example <code>Internal Tools</code> 的生成、列出、复制 host commands 入口；没有已写入或已列出的安全 report 时复制按钮保持禁用，避免输出带占位符或异常文件名的 shell 命令；复制命令优先使用刚写入的安全 report，否则从列表中选择 <code>modifiedAt</code> 最新的安全 <code>.json</code>；已复制命令会 shell-quote application id、设备侧 report 路径、主机 report 路径、analyzer 输出目录、gate Markdown 路径和 evidence 输出路径，并总是输出主机目录准备命令，当前目录输出时使用 <code>mkdir -p .</code>，确保复制出的命令块与 evidence validator 的 host handoff 合同一致；拉取与空文件检查阶段 fail-fast，在 analyzer 前确认拉回 JSON 非空，gate 返回 FAIL 时仍会打印 <code>android_report_gate.md</code> 后再保留失败状态；gate PASS 后会用 <code>$(git branch --show-current)</code> 和 <code>$(git rev-parse --short HEAD)</code> 把 host checkout 的 branch / commit 显式传给 evidence builder，生成 evidence draft 并立即运行 evidence validator。</li>
+            <li>analyzer 对 V1 performance report 的一等输入支持。</li>
+            <li>analyzer 已提供 <code>--android-report-gate</code>，可对拉回主机的 V1 Android report 做 PASS / FAIL 验收，并输出 Gate Summary、Checks、report / decision 摘要表、Android signal snapshot、Report Field Check、Identity Checklist 和 Issues。</li>
+            <li><code>tool/android_report_gate_contract.py</code> 已成为 Host Analysis 合同源，集中维护当前 report schema name、gate Markdown 文件名、gate section headings、Gate Summary keys / 顺序、Gate Summary 单个 <code>text</code> fenced key-value block、顶部 status block 标签 / 顺序、PASS / FAIL 状态值、summary table columns / 顺序、Report Field Check 标签 / 顺序、PASS gate 空 Issues 文本、<code>## Checks</code> 清单和 Identity Checklist 标签 / 顺序，供 analyzer Markdown / CLI 输出、evidence builder 校验和 evidence validator 校验共用，降低三处文案漂移导致的误判风险。</li>
+            <li><code>tool/android_report_evidence_contract.py</code> 已成为 evidence / host handoff 合同源，集中维护 <code>android_report_evidence_status</code>、<code>android_report_evidence_draft</code>、<code>files/performance_tier_reports</code> 设备侧 report 目录、设备侧 report path helper、安全 report 文件名 pattern 与判断 helper、host path basename helper、<code>App used</code> 枚举和占位文本、<code>## Run Context</code> / <code>## App-Side Trigger</code> / <code>## Host Outputs</code> / <code>## Result</code> 的字段标签与顺序、固定 app-side trigger 值、Pass/fail 结果、failure category 文本、evidence builder CLI option（<code>--gate-markdown</code> / <code>--date</code> / <code>--app-used</code> / <code>--app-variant</code> / <code>--android-version</code>）、默认 git branch / commit 解析的不可变命令常量、shell argv 渲染函数、<code>## Host Commands Run</code> 标题、bash code fence 文本、必含 host command 片段（包含 <code>python3</code> runner、stdout 重定向 token、<code>--android-report-gate</code> / <code>--analysis-output-dir</code> / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code>）、analyzer / builder / validator 脚本路径、ADB list / pull argv 前缀、ADB pull command token、主机目录准备 argv 前缀、拉回 report 非空检查 argv 前缀、fail-fast / gate status 捕获 / gate status 检查命令、host command 阶段 id 和阶段顺序；builder 生成的草稿和静态 evidence template 都会显式展示同一顺序文本，供 evidence builder、validator 和模板回归测试共用。</li>
+            <li><code>tool/analyze_diagnostics_test.py</code> 覆盖 analyzer gate 的 V1 PASS、legacy FAIL、缺字段 FAIL、非 Android FAIL、fallback FAIL、parse issue FAIL、gate markdown 输出、顶部 status block 合同输出和 CLI gate status helper。</li>
+            <li><code>tool/validate_android_report_evidence_test.py</code> 已锁定静态 evidence template 的 Run Context / App-Side Trigger / Host Outputs / Result 字段标签与顺序、gate section 顺序、Gate Summary key 顺序、Gate Summary <code>text</code> code fence、顶部 status block label 顺序、summary table headers / 顺序、Report Field Check 标签 / 顺序、<code>## Checks</code>、Identity Checklist 标签 / 顺序、<code>## Host Commands Run</code> 标题、bash code fence、必含 host command 片段、<code>--android-report-gate</code> / <code>--analysis-output-dir</code> / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code> option 和 host command 顺序文本必须匹配共享合同源，并直接断言 required snippets 合同源包含这些上下文 option，避免人工真机模板或合同源在文案更新后静默漂移；builder 和 validator 也会拒绝 Gate Summary、顶部 status block、summary table、Report Field Check 或 Identity Checklist 的额外字段、重复字段或字段重排。</li>
+            <li><code>tool/build_android_report_evidence.py</code> 已提供 evidence draft 生成器，可从拉回的 report JSON 和 <code>android_report_gate.md</code> 自动生成 goal evidence 草稿；生成草稿会显式声明 readiness evidence 只绑定当前选中的 report 文件，validator 只接受单个安全 <code>.json</code> report，不接受目录级或多 report batch；生成的 Host Commands Run 中 evidence builder 命令会显式携带当前 <code>Branch</code> / <code>Commit</code>、<code>--application-id</code> 和同一 evidence 输出路径，方便回放和 validator 核对；builder 自身也只接受顶层单个当前 V1 report JSON object、安全 <code>.json</code> report 文件名、完整基础 identity/source/timestamp、tier / confidence / runtime status 和当前 Android gate 必需信号，不接受目录、批量文件、JSON array、非当前 schema object、unsafe report 文件名、空白 source、缺失 generatedAt、generatedAt 非 UTC ISO-8601 timestamp、缺失 service session、非正 sequence、reportId 与 metadata 不匹配、缺失 decision timestamp、decision timestamp 非 ISO-8601 date-time、generatedAt 早于 decision timestamp、缺失 tier / confidence / runtime status、缺失 Android device / OS / RAM / SDK / low-RAM / low-power / memory pressure / thermal 信号、不可读取的 gate Markdown、非同一 report 的 stale gate Markdown、多 report gate Markdown、未使用单个 <code>text</code> fenced key-value block 或字段集 / 顺序不匹配的 Gate Summary、顶部 status block 与 Gate Summary 不一致或字段集 / 顺序不匹配的 gate Markdown、<code>## Checks</code> 缺失或被改写的 gate Markdown、Performance Reports 表字段集 / 顺序不匹配的 gate Markdown、Performance Reports Source 不匹配本次 report 路径的 gate Markdown、Performance Reports 表的 source tag / session / sequence / tier / confidence / runtime / timestamp 与当前 report JSON 不一致的 gate Markdown、Android Signals 表字段集 / 顺序不匹配或字段与当前 report JSON 不一致的 gate Markdown、Report Field Check 字段与当前 report JSON 不一致或字段集 / 顺序不匹配的 gate Markdown、Identity And Gate Checklist 不是全 yes 或标签 / 顺序不匹配的 gate Markdown，或 <code>## Issues</code> 不是 <code>- None.</code> 的 gate Markdown，并提示 <code>Report Field Check</code> 只能保留一个匹配当前 report 的 <code>### &lt;reportId&gt;</code> 标题，减少真机验收时手工复制字段、命令和作用域的错误。</li>
+            <li><code>tool/validate_android_report_evidence.py</code> 已提供人工 evidence markdown 校验，要求填回的真机记录绑定一个选中的安全 <code>.json</code> report，包含明确的 <code>App used</code> 枚举值、app variant、App-Side Trigger 必须记录 <code>Internal Tools</code> 的 Generate report / List reports / Copy host commands 和 <code>files/performance_tier_reports/</code> 目录、PASS gate summary、Gate Summary 必须是单个 <code>text</code> fenced key-value block 且字段集 / 顺序精确匹配共享合同、完整 <code>## Checks</code>、非空 summary tables、summary table columns / 顺序精确匹配共享合同、安全 report 文件名、basename 与 report 文件名一致的拉回路径、Performance Reports 表的 Source 必须匹配拉回路径和选中的 report 文件名、无占位符且与上下文字段一致的完整 host command 链路、Host Commands section 必须是单个 <code>bash</code> fenced command block、host command block 每一行必须能被 shell token 化解析、按 shell token 精确匹配上下文的 application id / 拉回路径 / analyzer 输出目录、结构化校验 <code>adb shell run-as</code> 和 <code>adb exec-out run-as</code> 的 application id 与设备侧 report 路径，并要求 adb list 命令精确列出 <code>files/performance_tier_reports</code>、adb pull 命令精确读取 <code>files/performance_tier_reports/&lt;Report file name&gt;</code> 且用 stdout 重定向到记录的拉回路径，结构化校验 <code>mkdir -p</code> 准备拉回 report 的主机目录、结构化校验 <code>test -s</code> 检查拉回 report 且 <code>cat</code> 打印记录目录下的 <code>android_report_gate.md</code>、结构化校验 analyzer 的输入 report / output dir / <code>--android-report-gate</code> 以及 evidence builder 的输入 report / analysis output dir / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code>，analyzer、evidence builder 和 evidence validator 命令必须精确匹配预期 argv 结构且不能夹带额外参数，evidence builder 的 <code>--application-id</code>、<code>--branch</code>、<code>--commit</code> 和 <code>--output</code> 必须显式出现并与运行上下文 / evidence 路径一致，指向同一 evidence 文件的 draft builder 与 validator 命令、host commands 执行顺序必须是 start fail-fast → list report directory → prepare host report directory → pull report → nonempty report check → allow analyzer gate failure capture → analyzer gate → capture gate status → resume fail-fast → gate markdown print → gate status check → evidence builder → evidence validator，且 host command block 不能包含合同阶段之外的额外命令、与 Gate Summary 一致、字段集 / 顺序精确匹配且直接位于 <code># Android Report Gate</code> 顶部区域的 Android Report Gate 顶部状态块、与 summary row count 一致且与 Report Field Check 一致的 Performance Reports 表、与 summary row count / Report Field Check / 运行上下文一致的 Android Signals 表、Report Field Check 只能有一个匹配当前 <code>reportId</code> 的标题，且字段必须位于 <code>## Report Field Check</code> section 内并精确匹配共享字段集 / 顺序、Identity And Gate Checklist 必须全 yes 且标签 / 顺序精确匹配共享合同、<code>## Issues</code> 必须只包含 <code>- None.</code>，并要求 <code>## Run Context</code>、<code>## App-Side Trigger</code>、<code>## Host Outputs</code> 和 <code>## Result</code> 字段必须位于各自 section 内，散落在其他 section 的同名字段不计入 readiness evidence，避免空模板、多 report evidence、缺少运行上下文、命令、Checks、summary table、Issues section 或字段与上下文不一致、裸散 / 额外 / 重复 / 重排的 Gate Summary key/value、顶部 status block 额外字段或字段重排、summary table 额外列或列重排、Report Field Check 额外字段或字段重排、Identity Checklist 额外标签或标签重排、未用 fenced block 包住命令、不可执行 placeholder 命令块、shell 引号损坏或半截命令、旧 analyzer-only 命令块、非约定 app 来源、错误 app-side 触发入口、命令字段前缀误匹配、list 命令附带额外路径、pull 命令实际读取其他 app 或其他设备侧 report 文件、pull 命令不用约定 stdout 重定向写入记录路径、缺少 fail-fast / gate status 捕获语义、主机目录准备、非空检查或 gate Markdown 打印指向其他路径、analyzer / builder / validator 夹带额外参数或实际参数指向其他文件或目录、缺失显式 builder branch / commit / application id / output、builder application id / branch / commit 与运行上下文不一致、builder output 与 validator input 不一致、Performance Reports Source 来自其他 report、builder 早于 analyzer/gate 或 validator 早于 builder 的乱序命令块、夹带额外未审计 host 命令、gate 顶部状态块、Report Field Check 或 Result 字段散落在所属 section 外、或 FAIL gate 被误当成 readiness 证据。</li>
+            <li><code>TEST.md</code> / <code>LOCAL.md</code> 中的 adb handoff 说明。</li>
+            <li>V1 retention policy 已明确：不自动清理，报告保留到 app 数据清除、卸载或人工删除。</li>
+            <li><code>README.md</code>、<code>docs/README.md</code> 和 <code>example/README.md</code> 已同步为 report loop 架构主线。</li>
+            <li><code>SPEC.md</code> 已补齐五层架构方向和 readiness 边界；公开 service / store / report identity API 已增加契约注释，方便自定义实现方沿用同一分层职责。</li>
+            <li><code>PACKAGING.md</code> 已同步 artifact ready 边界；分享 Android monitoring artifacts 为 ready 前必须绑定单个安全真机 report、Android report gate PASS 和 <code>android_report_evidence_status=PASS</code> 的填好 evidence。</li>
+            <li><code>GENERATION.md</code> 已同步 generated evidence draft 边界；生成的 evidence 草稿必须保留完整 host handoff、gate section / table / checklist 合同和单 report readiness 作用域。</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>未宣称完成</h3>
+          <ul class="compact-list">
+            <li>未声明 Android report loop ready / publishable / consumer-ready。</li>
+            <li>未执行 Android build、run、adb、模拟器、设备或 <code>@test-android-apps</code> 采集。</li>
+            <li>未验证真实设备上的 <code>run-as</code>、文件 owner、OEM 行为。</li>
+            <li>未把云上传、批量聚合或自动清理作为本阶段目标。</li>
+          </ul>
+        </div>
+      </div>
+      </details>
+    </section>
+
+    <section>
+      <h2>验收标准</h2>
+      <div class="decision-strip" aria-label="Architecture acceptance summary">
+        <div class="decision-card">
+          <h3>运行链路可写</h3>
+          <p>Dart service 生成当前 V1 report，Android native 写入 app-private <code>files/performance_tier_reports/</code>，MethodChannel metadata 不得 malformed。</p>
+        </div>
+        <div class="decision-card">
+          <h3>主机 gate 可判定</h3>
+          <p>analyzer 只接受当前 V1 Android report，并输出 Gate Summary、Performance Reports、Android Signals、Report Field Check 和 Identity Checklist。</p>
+        </div>
+        <div class="decision-card warning">
+          <h3>证据必须可关闭</h3>
+          <p>ready / done evidence 必须绑定一个安全 <code>.json</code> report；Report Field Check 只能有一个与当前 <code>reportId</code> 一致的标题，字段集 / 顺序和 Identity Checklist 标签 / 顺序都必须匹配共享合同，并通过 evidence validator。</p>
+        </div>
+      </div>
+
+      <details class="supporting-details">
+        <summary>展开完整验收条款</summary>
+      <ul>
+        <li>Dart report model 稳定生成 JSON，包含 schema name、JSON integer schema version、trim 后非空 JSON string report id/source/service session metadata、正 JSON integer report sequence、JSON string 形式的 UTC ISO date-time generatedAt、decision 和 metadata；model 构造阶段只接受当前 V1 <code>schemaName</code> / <code>schemaVersion</code>，并会拒绝空白 <code>reportId</code> / <code>source</code>、早于 <code>decision.decidedAt</code> 的 <code>generatedAt</code>，以及不完整或不匹配的 <code>metadata.serviceSessionId</code> / <code>metadata.reportSequence</code>；report id 必须匹配 <code>&lt;serviceSessionId&gt;-report-&lt;reportSequence&gt;</code>。</li>
+        <li><code>DefaultPerformanceTierService</code> 在已初始化和未初始化路径都能生成并写入当前 report，连续写入不会复用 report id 或 file name。</li>
+        <li>Android native 写入 app-private <code>files/performance_tier_reports/</code>，并通过 MethodChannel 返回必填文件元数据；native write call 必须携带当前 V1 <code>schemaVersion</code> 和非空 <code>reportId</code>，否则 native writer 直接拒绝；native write result 不得返回与请求不同的非空 <code>reportId</code>，否则 Dart store 视为 contract error；native list 只暴露符合 write 安全文件名规则的 <code>.json</code> 文件；native write/list metadata 必须提供 trim 后非空的 <code>fileName</code> / <code>relativePath</code> 和正 JSON integer <code>bytes</code>，Dart store 会拒绝字符串数字、0 bytes 和空白路径；native list result 必须是 string-keyed map-like file metadata 列表，Dart store 会拒绝 malformed item、非字符串 metadata key 和不完整 metadata，并对合法 listed report metadata 做 newest-first 排序，避免平台实现或测试替身返回无序列表。</li>
+        <li>Android native signal 至少覆盖 device model、OS version、RAM、low-RAM classification、SDK、thermal、low-power mode 和 memory pressure；media performance class 在系统提供时进入报告但可为空；analyzer gate 要求 tier、confidence、runtime status、platform、OS version、memory pressure state 和 SDK 29+ thermal state 是非空 JSON string 且处于当前 wire value 范围内，并要求 RAM、SDK、memory pressure level 与 SDK 29+ thermal level 必须是 JSON integer，low-RAM 与 low-power mode 必须是 JSON boolean，SDK 29 以下允许 thermal 为空。</li>
+        <li>V1 report storage 明确保留策略：不自动删除，人工验证需要清理时由人执行 app data 清理、卸载或 adb 删除命令。</li>
+        <li>example 的 <code>Internal Tools</code> 能从真实 app UI 触发 report 生成、列表刷新，并复制 host commands；命令块包含开启 fail-fast、列出设备 report 目录、准备主机拉回目录、adb 拉取、拉回文件非空检查、允许 analyzer gate 失败状态捕获、analyzer gate、捕获 gate status、恢复 fail-fast、<code>android_report_gate.md</code> 打印、gate 状态检查、evidence draft 生成和 evidence validator，且只接受 native 风格安全 <code>.json</code> report 文件名；刚写入的安全 report 优先，否则选择 <code>modifiedAt</code> 最新的安全 listed report，并对 shell 路径参数加 quote；即使主机 report 输出到当前目录，也会显式生成 <code>mkdir -p .</code>，避免 Dart example 与 Python evidence validator 对主机目录准备阶段产生漂移；evidence builder 命令会用 <code>$(git branch --show-current)</code> 和 <code>$(git rev-parse --short HEAD)</code> 解析 host checkout 并传入 <code>--branch</code> / <code>--commit</code>；拉取与空文件检查阶段 fail-fast，analyzer FAIL 时仍打印 gate Markdown，再用保存的 gate 退出码让命令块失败。</li>
+        <li>离线分析脚本识别 V1 <code>flutter_performance_tier.performance_report</code>，输出 schema、report id、report source、service session metadata 和 report sequence，并可通过 <code>--android-report-gate</code> 对真机回传文件或专用目录给出退出码、可复制 Gate Summary、可读 report / decision 摘要表、Android signal snapshot、Report Field Check 和 Identity Checklist；gate 输入不得混入 legacy AI diagnostics、decision-only 或 structured-log session，并要求 schema version 是 JSON integer <code>1</code>，report id/source/service session/device model 是 trim 后非空 JSON string，report sequence 是正 JSON integer，report id 匹配 service session + sequence，且同一 gate 输入内 report id 与 service session / sequence 组合必须唯一；顶层 UTC generatedAt 与 decision timestamp 必须是 JSON string 形式的可信时间字段，且带 timezone 时 <code>generatedAt</code> 不得早于 <code>decision.decidedAt</code>。</li>
+        <li>用户侧真机生成 report 后，可通过 adb 或 <code>@test-android-apps</code> 拉取 JSON，并被 analyzer 成功解析；目录输入可用于 analyzer 初筛，但 ready / done evidence 必须绑定一个选中的安全 <code>.json</code> report，且 evidence builder 会拒绝 unsafe report 文件名；随后用 <code>python3 tool/build_android_report_evidence.py &lt;pulled-report-file&gt; --analysis-output-dir build/diagnostics_analysis_android_report_gate --branch &lt;branch&gt; --commit &lt;commit&gt; --output &lt;filled-evidence.md&gt; --application-id &lt;applicationId&gt;</code> 生成 evidence 草稿；填好的 evidence markdown 还必须通过 <code>python3 tool/validate_android_report_evidence.py &lt;filled-evidence.md&gt;</code>，输出 <code>android_report_evidence_status=PASS</code> 后才能作为 ready / done 证据。</li>
+      </ul>
+      </details>
+    </section>
+
+    <section>
+      <h2>验证记录</h2>
+      <div class="decision-strip" aria-label="Validation summary">
+        <div class="decision-card">
+          <h3>本地测试</h3>
+          <p>package、example、parser、evidence builder 和 evidence validator 的允许范围测试已覆盖当前架构链路。</p>
+        </div>
+        <div class="decision-card">
+          <h3>静态边界</h3>
+          <p><code>git diff --check</code>、Python compile、HTML 结构检查用于防止文档和脚本级错误。</p>
+        </div>
+        <div class="decision-card warning">
+          <h3>设备证据缺口</h3>
+          <p>真机 Android report、主机 gate PASS、填好后的 evidence PASS 仍是关闭 goal 前的硬门槛。</p>
+        </div>
+      </div>
+
+      <details class="supporting-details">
+        <summary>展开完整验证记录</summary>
+      <ul>
+        <li><code>flutter test test/performance_tier</code> 通过 66 条测试；其中 report model 测试已锁定当前 V1 schema、空白身份字段拒绝规则、service identity helper、service identity metadata 一致性、native metadata 非空路径 / 正 integer bytes 边界和 <code>generatedAt</code> 不早于 <code>decision.decidedAt</code> 的时间一致性，service report 测试已锁定 <code>reportId</code> 与 <code>serviceSessionId</code> / <code>reportSequence</code> 的生成一致性，MethodChannel store 测试已锁定 native write result 的 <code>reportId</code> 一致性、malformed list item 拒绝规则和非字符串 metadata key 拒绝规则，平台字段完整性测试已锁定 Android native report writer 的 V1 schema、非空 report id、安全文件名、list 复用安全文件名边界和非空内容边界。</li>
+        <li><code>cd example &amp;&amp; flutter test</code> 通过 23 条测试，覆盖 public example、Internal Tools、report 写入/列表、复制按钮禁用态、安全文件名过滤、最新安全 listed report 选择、shell-quoted host commands、fail-fast / 非空拉回文件检查、analyzer FAIL 后仍打印 gate Markdown 并保留退出状态，以及旧 upload probe 的内部对照路径。</li>
+        <li><code>flutter test example/test/demo/internal_tools_controller_test.dart</code> 通过 6 条测试，覆盖 example 复制出的 host commands 会显式包含 <code>--branch "$(git branch --show-current)"</code> 和 <code>--commit "$(git rev-parse --short HEAD)"</code>，并在主机 report 输出到当前目录时保留 <code>mkdir -p .</code>。</li>
+        <li><code>flutter test example/test/widget_test.dart</code> 通过 1 条测试，确认 public example 默认隐藏 Internal Tools，避免普通入口暴露真机 report loop 验收工具。</li>
+        <li><code>python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_sample_performance_report</code> 通过。</li>
+        <li><code>python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_gate_sample --android-report-gate</code> 通过，gate 输出 PASS，并在 <code>android_report_gate.md</code> 中生成 Gate Summary、Checks、report / decision 摘要表、Android signal snapshot、Report Field Check、Identity Checklist 和 Issues。</li>
+        <li><code>python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_gate_sample --android-report-gate &amp;&amp; python3 tool/build_android_report_evidence.py tool/testdata/sample_performance_report.json --analysis-output-dir build/diagnostics_analysis_gate_sample --branch codex/android-report-loop --commit abc1234 --output build/android_report_loop_evidence_sample.md --application-id com.example.flutter_performance_tier_example &amp;&amp; python3 tool/validate_android_report_evidence.py build/android_report_loop_evidence_sample.md</code> 通过，确认 sample gate、evidence draft 和 evidence validator 串联输出 <code>android_report_evidence_status=PASS</code>，且生成的 evidence 记录完整 host command 链路、显式 <code>--branch</code> / <code>--commit</code>、显式 <code>--application-id</code> 和单个安全 <code>.json</code> report 的 readiness 作用域。</li>
+        <li><code>python3 tool/analyze_diagnostics.py tool/testdata/sample_ai_report.json --output build/diagnostics_analysis_gate_legacy --android-report-gate</code> 按预期返回 exit code 2，拒绝 legacy AI report 作为 Android V1 report loop 验收证据。</li>
+        <li><code>python3 tool/analyze_diagnostics_test.py</code> 通过 31 条测试，覆盖 gate 核心判定，包括非 Android、fallback decision、parse issue、非字符串/空白身份字段、缺失或字符串 report sequence、report id 与 session / sequence 不一致、重复 report identity、非字符串时间字段、时间顺序倒挂、非字符串 wire 字段、字符串 schema version、字符串 Android 数值信号、字符串 Android boolean 信号、顶层 <code>generatedAt</code> 非 UTC 失败路径、顶部 status block、CLI gate status helper、Gate Summary / Report Field Check / Identity Checklist 输出、Report Field Check 当前 <code>reportId</code> 标题输出，以及输入目录内输出目录不被重复扫描的边界。</li>
+        <li><code>python3 tool/build_android_report_evidence_test.py</code> 通过 40 条测试，覆盖从 pulled report + gate output 自动使用 <code>deviceSignals.osVersion</code> 生成可通过 validator 的 evidence 草稿、记录完整 builder / validator host command 链路、生成草稿中的 <code>## Host Commands Run</code> 标题、必含 host command 片段和 host command 顺序文本来自共享 evidence 合同、自定义 application id 会同时写入 <code>## Run Context</code>、ADB list / pull commands、builder <code>--application-id</code> 以及显式 <code>--branch</code> / <code>--commit</code>、CLI 解析层要求显式传入 <code>--application-id</code> 且不再提供隐式 example app id、默认 branch / commit 解析使用共享 evidence 合同里的 git 命令、builder 阶段直接拒绝空白 application id、占位符 branch、非法 <code>App used</code> 和无法从 git 解析且未显式传入的 branch / commit、明示 validator 只接受单个安全 <code>.json</code> report、提示保留单个当前 report 的 Report Field Check 标题、拒绝 JSON array / batch report 输入、拒绝非当前 V1 schema object、拒绝空白 source、拒绝非 UTC <code>generatedAt</code>、拒绝 date-only <code>decision.decidedAt</code>、拒绝 <code>generatedAt</code> 早于 <code>decision.decidedAt</code>、拒绝 reportId 与 metadata 不匹配、拒绝缺失 Android device model、拒绝字符串 boolean Android signal、把缺失 gate Markdown 包装成 draft error、拒绝非同一 report 的 stale gate Markdown、拒绝多 report gate summary、拒绝未使用单个 <code>text</code> fenced key-value block 或字段集 / 顺序不匹配的 Gate Summary、拒绝顶部 status block 与 Gate Summary 不一致或字段集 / 顺序不匹配的 gate Markdown、拒绝缺失或被改写的 <code>## Checks</code> section、拒绝 Performance Reports / Android Signals 表字段集 / 顺序不匹配的 gate Markdown、拒绝 Performance Reports Source 不匹配本次 report 路径的 gate Markdown、拒绝 Performance Reports 表字段与 report JSON 不一致的 gate Markdown、拒绝 Android Signals 表字段与当前 report JSON 不一致的 gate Markdown、拒绝 Report Field Check 字段与当前 report JSON 不一致或字段集 / 顺序不匹配的 gate Markdown、拒绝 Identity And Gate Checklist 不是全 yes 或标签 / 顺序不匹配的 gate Markdown、拒绝 <code>## Issues</code> 不是 <code>- None.</code> 的 gate Markdown，以及在 builder 阶段直接拒绝 unsafe report 文件名。</li>
+        <li><code>python3 tool/build_android_report_evidence.py tool/testdata/sample_ai_report.json --analysis-output-dir build/diagnostics_analysis_gate_sample --output build/non_v1_evidence_should_fail.md --application-id com.example.flutter_performance_tier_example</code> 按预期返回 exit code 2，并输出 <code>android_report_evidence_draft=FAIL</code>，证明 evidence builder 不会为非当前 V1 report object 生成 ready-looking 草稿。</li>
+        <li><code>python3 tool/validate_android_report_evidence_test.py</code> 通过 66 条测试，覆盖填好的 PASS evidence、匹配的显式 builder <code>--branch</code> / <code>--commit</code>、shared <code>host_path_basename</code> 对 Unix / Windows path separator 的归一化、required snippets 合同源必须包含 <code>python3</code> runner、stdout 重定向 token、<code>--android-report-gate</code> / <code>--analysis-output-dir</code> / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code>、builder 命令缺失 <code>--application-id</code> 或 <code>--output</code> 会被拒绝、缺失显式 git context、缺失成对 git context、branch mismatch、commit mismatch、未填模板、静态 evidence template 的 gate section 顺序 / Gate Summary key 顺序 / Gate Summary <code>text</code> code fence / 顶部 status block label 顺序 / summary table headers / 顺序 / Report Field Check 标签 / 顺序 / <code>## Checks</code> / Identity Checklist / <code>## Run Context</code> / <code>## App-Side Trigger</code> / <code>## Host Outputs</code> / <code>## Result</code> 标签与共享合同一致、host command section / bash code fence / 必含片段（含 <code>python3</code>、stdout 重定向、<code>--android-report-gate</code> / <code>--analysis-output-dir</code> / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code>）/ 脚本路径 / gate status 检查 / 执行阶段顺序 / 顺序文本与 evidence 合同一致、缺失主机目录准备 / gate status 捕获 / 恢复 fail-fast 会被拒绝、host command block 夹带额外命令会被拒绝、host command block 未使用 bash fence 会被拒绝、host command shell 语法损坏会被拒绝、Identity Checklist 必须位于正确 section、Identity Checklist 标签 / 顺序不匹配会被拒绝、非约定 <code>App used</code>、App-Side Trigger 与 <code>Internal Tools</code> 生成 / 列出 / 复制入口或 on-device 目录不一致、缺失完整 host command 链路、host command placeholder、host command 与上下文字段不一致、host command 上下文字段前缀误匹配、host commands 乱序、list 命令附带额外 ADB 参数会被拒绝、pull 命令不用精确 stdout 重定向会被拒绝、analyzer / builder / validator 命令夹带额外参数会被拒绝、pull 命令 app id 或设备侧 report 文件与上下文不一致、<code>test -s</code> 检查文件或 gate Markdown 打印路径与上下文不一致、analyzer 命令输入或输出目录与上下文不一致、builder 命令输入 / analysis output dir / <code>--application-id</code> / <code>--branch</code> / <code>--commit</code> / <code>--output</code> 与上下文不一致、builder 输出 evidence 与 validator 输入 evidence 不一致、拉回路径 basename 与 report 文件名不一致、Performance Reports Source 与拉回 report 不一致、Android Report Gate 顶部状态块与 Gate Summary 不一致、Android Report Gate 顶部状态块散落在 gate header 之外、Android Report Gate 顶部状态块字段集 / 顺序不匹配、Gate Summary 未保留单个 <code>text</code> fenced key-value block 或字段集 / 顺序不匹配、summary table 字段集 / 顺序不匹配、缺失或被改写的 <code>## Checks</code> section、Gate Summary row count 与表格行数不一致、多 report evidence、Performance Reports 表与 Report Field Check 不一致、Android Signals 表与运行上下文不一致、Android Signals 表与 Report Field Check 不一致、Report Field Check 与运行上下文不一致、Report Field Check 缺少当前 report 标题或出现多个 report 标题、Report Field Check 字段散落在所属 section 外、Report Field Check 字段集 / 顺序不匹配、缺失或非空 <code>## Issues</code> section、缺失 Result、App-Side Trigger / Host Outputs / Result 字段散落在所属 section 外、FAIL gate summary 和 unsafe report file name。</li>
+        <li><code>python3 tool/validate_android_report_evidence.py goals/2026-06-11-android-performance-report-loop/evidence/android_report_loop_evidence_template.md</code> 按预期返回 exit code 2，证明空模板不会被误判为可关闭证据。</li>
+        <li><code>flutter test test/performance_tier/service/platform_field_integrity_test.dart test/performance_tier/service/method_channel_device_signal_collector_test.dart</code> 通过，覆盖 Android native 字段契约和 Dart 解析。</li>
+        <li><code>python3 tool/analyze_diagnostics.py tool/testdata/sample_ai_report.json --output build/diagnostics_analysis_sample_ai_report</code> 通过。</li>
+        <li><code>PYTHONPYCACHEPREFIX=build/py_compile_cache python3 -m py_compile tool/android_report_gate_contract.py tool/android_report_evidence_contract.py tool/analyze_diagnostics.py tool/analyze_diagnostics_test.py tool/build_android_report_evidence.py tool/build_android_report_evidence_test.py tool/validate_android_report_evidence.py tool/validate_android_report_evidence_test.py</code> 通过。</li>
+        <li><code>dart format --set-exit-if-changed example/lib/demo/performance_tier_demo_controller.dart example/test/demo/internal_tools_controller_test.dart</code> 通过，格式化检查 2 个文件且 0 个文件变更。</li>
+        <li><code>dart format example/lib/demo/performance_tier_demo_controller.dart example/test/demo/internal_tools_controller_test.dart</code> 通过，格式化 2 个文件，其中 1 个测试文件发生格式化变更。</li>
+        <li><code>dart format lib test example/lib example/test</code> 通过，格式化 64 个文件且 0 个文件变更。</li>
+        <li><code>git diff --check</code> 通过。</li>
+      </ul>
+      </details>
+      <p class="callout">剩余验证必须由用户在 Android 真机上完成：Codex 项目规则禁止执行 build、run、adb、模拟器、设备和 <code>@test-android-apps</code> 采集命令。</p>
+    </section>
+
+    <section>
+      <h2>下一步验收动作</h2>
+      <ol>
+        <li>用户在 Android 真机运行 example app。</li>
+        <li>打开 <code>Internal Tools</code>，点击 <code>Generate report</code>。</li>
+        <li>点击 <code>List reports</code>，确认 report 文件出现在 app 私有目录列表。</li>
+        <li>点击 <code>Copy host commands</code>，在主机按复制顺序执行完整 handoff：fail-fast、列出设备 report 目录、准备主机拉回目录、拉回 report、确认文件非空、允许 analyzer gate failure capture、运行 analyzer gate、捕获 gate status、恢复 fail-fast、打印 gate Markdown、检查 gate status、生成 evidence draft、运行 evidence validator；如果 evidence builder 无法从 host checkout 解析 git branch 或 commit，则用显式 <code>--branch &lt;branch&gt;</code> 和 <code>--commit &lt;commit&gt;</code> 重跑 builder 命令后再运行 validator。</li>
+        <li>人工确认生成的 evidence markdown 中的 Android version、app variant、application id 和设备上下文。</li>
+        <li>对填好的 evidence markdown 运行 <code>python3 tool/validate_android_report_evidence.py &lt;filled-evidence.md&gt;</code>，确认输出 <code>android_report_evidence_status=PASS</code>。</li>
+        <li>把真机证据补回本页；通过后再把目标从 <code>active</code> 改为 ready 或 done。</li>
+      </ol>
     </section>
 
     <section>
       <h2>Research 摘要</h2>
       <ul>
-        <li>事实：项目事实源 `SPEC.md` 已将当前方向定义为 Android-first 性能监测重构，目标是设备侧生成结构化报告，并可通过 direct adb 或 `@test-android-apps` 拉到电脑。</li>
-        <li>事实：`TEST.md` 允许 report schema、parser、storage design 和非设备测试等前置改造先用自动化证据落地；只有声明 Android report loop ready / publishable / consumable 时才必须提供真机拉取证据。</li>
-        <li>事实：现有 `TierDecision.toMap()` 已包含 `tier`、`confidence`、`deviceSignals`、`runtimeObservation`、`reasons`、`appliedPolicies`，可作为 V1 性能报告主体。</li>
-        <li>事实：现有 Android plugin 使用 `performance_tier/device_signals` MethodChannel 和 `collectDeviceSignals` 方法采集 Android 信号；本轮可在同一 channel 上增加 report 写入/列出方法，避免先引入第二条 native 通道。</li>
-        <li>约束：Codex 不运行 `flutter build`、`flutter run`、Gradle build、adb、模拟器、设备或 `@test-android-apps` 采集命令；验证以 Dart/Flutter 非设备测试和文本契约检查为主，真机拉取证据延期给用户。</li>
-        <li>未知：真实 Android 设备上的 `run-as` 可用性、文件 owner、OEM 行为和 `@test-android-apps` 实际采集流程需用户侧验证。</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Design 决策</h2>
-      <ul>
-        <li>新增 V1 `PerformanceReport` Dart model，包含 schema 名称、schema version、report id、生成时间、source、`TierDecision` 和 metadata。report schema version 独立于 package version，默认服务生成的 report id 带 service session 与递增 sequence。</li>
-        <li>新增 report store 边界：Dart service 负责组装 report，native Android 负责写入 app-private `files/performance_tier_reports/` 目录并列出报告文件；native 写入遇到同名文件时选择下一个可用文件名，避免覆盖旧报告。</li>
-        <li>BREAKING CHANGE：扩展 `PerformanceTierService`，增加写入当前报告和列出本地报告的入口；外部自定义实现类需要补齐 `writeCurrentReport` 和 `listPerformanceReports`，默认实现保持旧初始化/刷新/监听能力。</li>
-        <li>Android 文件写入使用 app-private storage，不申请外部存储权限；host 拉取通过 `adb shell run-as &lt;applicationId&gt; ls files/performance_tier_reports` 和 `adb exec-out run-as &lt;applicationId&gt; cat files/performance_tier_reports/&lt;fileName&gt;`。</li>
-        <li>当前 rejected option：不把 OSS upload probe 作为主线，不直接做云上传；不在第一刀引入外部可读目录，避免权限和隐私复杂度提前扩大。</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Check 验收标准</h2>
-      <ul>
-        <li>Dart report model 能稳定生成 JSON，包含 schema version、report id、生成时间、source、decision、metadata，并有单测覆盖。</li>
-        <li>`DefaultPerformanceTierService` 能在已初始化或未初始化时生成并写入当前 report，连续写入不会复用 report id / file name，返回文件名、相对路径、字节数等 write result，并有非设备单测覆盖。</li>
-        <li>Android plugin 暴露 `writePerformanceReport` 和 `listPerformanceReports` 方法，写入 app-private `files/performance_tier_reports/`，避免覆盖同名报告，并通过平台字段完整性测试检查方法名和目录契约。</li>
-        <li>example 的 `Internal Tools` 提供 `Generate report`、`List reports` 和 `Copy adb command`，让人工真机验收能从 demo 直接触发设备侧报告生成。</li>
-        <li>Dart MethodChannel 结果解析要求 native 返回必填文件元数据；缺少 `fileName`、`relativePath` 或 `bytes` 时按 contract error 处理，不记录为成功写入。</li>
-        <li>离线分析脚本识别 V1 `flutter_performance_tier.performance_report`，输出 schema、report id、report source 和 service session metadata，并保留旧 AI diagnostics JSON 兼容路径。</li>
-        <li>`TEST.md` 与 `LOCAL.md` 写明具体 adb 拉取命令形态，并明确本轮未执行 adb/设备验证，真机拉取证据延期。</li>
-        <li>验证结果：`flutter test test/performance_tier` 通过；`cd example &amp;&amp; flutter test test/demo/internal_tools_controller_test.dart test/widget_test.dart` 通过；`python3 tool/analyze_diagnostics.py tool/testdata/sample_performance_report.json --output build/diagnostics_analysis_sample_performance_report` 通过。</li>
-        <li>延期验收：用户需在 Android 真机上生成 report，并执行 `adb shell run-as &lt;applicationId&gt; ls files/performance_tier_reports` 与 `adb exec-out run-as &lt;applicationId&gt; cat files/performance_tier_reports/&lt;fileName&gt; &gt; &lt;host-report-file&gt;` 或等价 `@test-android-apps` 收集流程。</li>
-      </ul>
-    </section>
-
-    <section>
-      <h2>Plan 执行计划</h2>
-      <ul>
-        <li>新增 report model、write result、file metadata 和 MethodChannel report store。</li>
-        <li>扩展 service interface 与 default service，注入 report store 并实现 write/list report 入口。</li>
-        <li>扩展 Android plugin 的 MethodChannel handler，写入和列出 app-private report 文件。</li>
-        <li>更新 barrel export、平台契约测试、report model/store/service 测试。</li>
-        <li>补齐 example Internal Tools 的 Android report loop 入口与 analyzer V1 report 输入路径。</li>
-        <li>更新 `TEST.md` / `LOCAL.md` 的具体 adb 拉取命令和延期真机验证说明。</li>
-        <li>运行允许的相关测试子集，最后把验证证据和剩余风险写回本 goal。</li>
+        <li><code>SPEC.md</code> 已把当前方向定义为 Android-first 性能监测重构，并用 Example UI、Dart Service、Platform Store、Android Storage、Host Analysis 五层描述当前 report loop 边界；目标是设备侧生成结构化报告，并可被主机拉取。</li>
+        <li><code>TEST.md</code> 允许 report schema、parser、storage design 和非设备测试先落地；声明 report loop ready 时必须提供真机 report、Android report gate PASS 和 evidence validator PASS 证据。</li>
+        <li><code>TierDecision.toMap()</code> 已包含 V1 报告主体需要的 tier、confidence、deviceSignals、runtimeObservation、reasons、appliedPolicies。</li>
+        <li>现有 Android plugin 已有 <code>performance_tier/device_signals</code> MethodChannel，本阶段沿用同一 channel 增加 report 写入和列出方法。</li>
       </ul>
     </section>
 
     <section>
       <h2>Problem 记录</h2>
       <ul>
-        <li>无实现阻塞问题。剩余风险：Codex 不能执行 Android build、adb 或设备拉取，因此本轮已证明 Dart contract、MethodChannel 调用形态、service 编排和 Android 源码契约；真实设备报告生成、文件权限和 host 拉取仍需用户验证。本轮 API 为 report loop 骨架，不声明 ready / publishable / consumer-ready。</li>
+        <li>无实现阻塞问题。</li>
+        <li>剩余风险集中在真实 Android 环境：<code>run-as</code> 可用性、文件权限、app id、OEM 行为和 <code>@test-android-apps</code> 采集链路。</li>
       </ul>
     </section>
 
     <section>
       <h2>关联文档</h2>
       <ul>
-        <li><a href="../../SPEC.md">SPEC.md</a>：当前 Android-first 性能监测方向和 breaking change 姿态。</li>
-        <li><a href="../../TEST.md">TEST.md</a>：当前验证边界、report pull 证据要求和 Codex 命令限制。</li>
+        <li><a href="../../SPEC.md">SPEC.md</a>：当前 Android-first 性能监测方向、五层架构边界和 breaking change 姿态。</li>
+        <li><a href="../../TEST.md">TEST.md</a>：当前验证边界、report gate / evidence 证据要求和 Codex 命令限制。</li>
         <li><a href="../../LOCAL.md">LOCAL.md</a>：本地命令、adb handoff 和 secret 边界。</li>
+        <li><a href="../../README.md">README.md</a>：接入方视角下的能力概览和 Android report loop 边界。</li>
+        <li><a href="../../docs/README.md">docs/README.md</a>：内部文档导航和当前架构目标入口。</li>
+        <li><a href="../../example/README.md">example/README.md</a>：example 内部工具与真机验收入口。</li>
+        <li><a href="../../docs/diagnostics_analysis_workflow.md">docs/diagnostics_analysis_workflow.md</a>：主机侧离线分析输入和输出流程。</li>
+        <li><a href="evidence/android_report_loop_evidence_template.md">android_report_loop_evidence_template.md</a>：真机 report loop 验收证据填写模板，绑定单个选中的安全 report，包含 report identity、完整 Android signal snapshot、Checks、重复输入、gate 输入纯度勾选项和 <code>## Issues</code> 结果。</li>
       </ul>
     </section>
 
     <section>
-      <h2>变更记录</h2>
-      <ul>
+      <details class="changelog">
+        <summary>变更记录</summary>
+        <ul>
+        <li>2026-06-12: 继续收敛 host path basename 合同；<code>tool/android_report_evidence_contract.py</code> 现在提供共享 <code>host_path_basename</code>，builder 的 Performance Reports Source 匹配、validator 的 Pulled report path / Source / host command basename 校验共用同一来源，并新增 Unix / Windows path separator 回归测试。</li>
+        <li>2026-06-12: 按整体架构优先再次更新 goal 首屏；新增默认可见的“整体架构主视图”，用一条主线、五层责任和三组共享合同直接展示设备侧 runtime、主机侧 evidence、handoff / readiness 护栏和真实 Android evidence 缺口，并把原来的长架构蓝图折叠为详情，避免首屏被重复架构视图稀释。</li>
+        <li>2026-06-12: 继续收敛安全 report 文件名合同；<code>tool/android_report_evidence_contract.py</code> 现在提供共享 <code>is_safe_report_file_name</code>，builder 拒绝 unsafe pulled report 文件名和 validator 校验 evidence 中的 Report file name 共用同一个安全文件名判断。</li>
+        <li>2026-06-12: 继续收敛设备侧 report path 合同；<code>tool/android_report_evidence_contract.py</code> 现在提供共享 <code>android_report_device_path</code>，builder 生成 adb pull 路径和 validator 期望设备侧路径共用同一来源，validator 查找 pull 源路径时也改为使用 <code>ANDROID_REPORT_EVIDENCE_ADB_PULL_COMMAND</code> 而不是裸 <code>cat</code> token。</li>
+        <li>2026-06-12: 继续收敛 host command shell 渲染语义；<code>tool/android_report_evidence_contract.py</code> 现在提供共享 <code>host_command_argv_text</code>，builder 生成 host command 前缀和 validator expected argv 错误信息不再各自维护 <code>shlex.quote</code> 拼接逻辑。</li>
+        <li>2026-06-12: 继续收敛 evidence builder 的 git context 解析；默认 branch / commit 解析命令现在由 <code>tool/android_report_evidence_contract.py</code> 以不可变 tuple 维护，builder <code>config_from_args</code> 使用共享命令常量，builder 回归测试新增默认 git context 解析用例并更新为 40 条。</li>
+        <li>2026-06-12: 继续收敛 evidence builder 输入边界；<code>--gate-markdown</code>、<code>--date</code>、<code>--app-used</code>、<code>--app-variant</code>、<code>--android-version</code> 和默认 app variant 现在由 <code>tool/android_report_evidence_contract.py</code> 维护，builder argparse 与相关测试共用同一组 option 常量。</li>
+        <li>2026-06-12: 继续收敛 Host Analysis 执行语义合同；<code>tool/android_report_evidence_contract.py</code> 现在维护 <code>python3</code> runner 和 stdout 重定向 token，builder 生成 host commands、validator 期望 argv 和 required snippets 回归测试共用同一来源，避免 Python 脚本执行方式或 adb pull 写入方式在生成端与校验端之间漂移。</li>
+        <li>2026-06-12: 继续收敛 Host Analysis artifact 合同；<code>android_report_gate.md</code> 文件名现在由 <code>tool/android_report_gate_contract.py</code> 维护，并被 analyzer、evidence builder、evidence validator、evidence required snippets 测试和本页共同引用，避免 gate Markdown 产物名在写入、读取和 handoff 校验之间漂移。</li>
+        <li>2026-06-12: 继续收敛 evidence builder 的 host command 生成；<code>tool/build_android_report_evidence.py</code> 现在使用 <code>tool/android_report_evidence_contract.py</code> 里的 fail-fast、允许 gate failure capture、gate status capture 和 gate status check 常量生成命令，避免 builder 输出和 validator 阶段识别各自维护 shell 控制语义。</li>
+        <li>2026-06-12: 继续收敛 ADB / host file check 命令形状；<code>tool/android_report_evidence_contract.py</code> 现在维护 adb list、adb pull、主机目录准备、拉回 report 非空检查和 gate Markdown 打印的 argv 前缀，builder 生成命令和 validator 结构识别共用同一组合同。</li>
+        <li>2026-06-12: 继续收敛 host command 阶段合同；<code>tool/android_report_evidence_contract.py</code> 现在维护 start fail-fast、list、prepare、pull、nonempty、allow gate fail、analyzer、gate status capture、resume fail-fast、gate Markdown print、gate status check、builder 和 validator 的阶段 id，validator 的阶段识别不再重复维护这些字符串。</li>
+        <li>2026-06-12: 继续收敛 Host Analysis option 合同；<code>--android-report-gate</code> 和 <code>--analysis-output-dir</code> 现在也进入 <code>tool/android_report_evidence_contract.py</code>，builder、validator、required snippets 测试、TEST、GENERATION、README、diagnostics workflow 和本页统一引用，避免 analyzer gate 与 builder analysis output 的 handoff option 漂移。</li>
+        <li>2026-06-12: 继续收敛 Host Analysis handoff 合同；<code>--output</code> 现在作为 <code>tool/android_report_evidence_contract.py</code> 的一等 option 常量和 required host command snippet，被 builder、validator、回归测试、TEST、GENERATION、README、diagnostics workflow 和本页共同引用，避免 builder 输出路径要求只存在于 validator 实现里。</li>
+        <li>2026-06-12: 继续按整体架构优先更新 goal 首屏；新增“架构答案”四卡片，直接展示当前定位、设备边界、主机边界和关闭门槛，让读者先看到系统边界和真机 evidence 缺口，再进入详细验收记录。</li>
+        <li>2026-06-12: 收紧 evidence validator 的 builder 输出合同；<code>tool/validate_android_report_evidence.py</code> 现在会拒绝 evidence builder 命令缺失 <code>--output</code> 的 host handoff，避免 validator 命令指向了 evidence 文件但 builder 没有实际生成该文件；validator 测试数更新为 65 条，并同步 TEST。</li>
+        <li>2026-06-12: 增加 evidence validator 负例，直接拒绝 evidence builder 命令缺失 <code>--application-id</code> 的 host handoff；validator 测试数更新为 64 条，避免 host app / example app 上下文只在 Run Context 中声明但未进入 builder 命令。</li>
+        <li>2026-06-12: 增加 evidence validator 合同源回归测试，直接锁定 <code>ANDROID_REPORT_EVIDENCE_REQUIRED_HOST_COMMAND_SNIPPETS</code> 必须包含 <code>--application-id</code>、<code>--branch</code> 和 <code>--commit</code>；validator 测试数更新为 63 条。</li>
+        <li>2026-06-12: 继续收紧 Host Analysis 合同源；<code>tool/android_report_evidence_contract.py</code> 的必含 host command 片段现在包含 evidence builder 的 <code>--application-id</code>、<code>--branch</code> 和 <code>--commit</code>，并同步 TEST、GENERATION 和本页验证记录，确保模板回归测试、合同源和 validator 的 git context 要求一致。</li>
+        <li>2026-06-12: 补充 example widget 验证记录；当前 goal 默认展示继续以架构蓝图、五层职责地图、状态四宫格和真机 evidence 缺口为主，细节验证记录保留在折叠区。</li>
+        <li>2026-06-12: 对齐 Example UI 层与 Host Analysis validator 的 git context 合同；<code>Copy host commands</code> 现在会在 evidence builder 命令中通过 <code>$(git branch --show-current)</code> / <code>$(git rev-parse --short HEAD)</code> 传入显式 <code>--branch</code> / <code>--commit</code>，并修正当前目录输出时的 <code>mkdir -p .</code> 文本；同步 README、TEST、LOCAL、example README 和 controller 测试。</li>
+        <li>2026-06-12: <strong>BREAKING CHANGE</strong>: 收紧 evidence validator 的 host handoff 合同；<code>tool/validate_android_report_evidence.py</code> 现在要求 builder 命令显式携带与 <code>## Run Context</code> 一致的 <code>--branch</code> 和 <code>--commit</code>，不再接受缺少显式 git context 的旧 evidence 命令块；同步 README、TEST 和 diagnostics workflow，并将 validator 回归测试扩展到 62 条。</li>
+        <li>2026-06-12: 同步 <code>example/README.md</code> 的真机入口说明，补齐 host checkout 无法解析 git branch / commit 时的 evidence builder 恢复路径：使用显式 <code>--branch &lt;branch&gt;</code> 和 <code>--commit &lt;commit&gt;</code> 重跑 builder，再运行 evidence validator，并要求最终 evidence 的 branch / commit 与运行上下文一致。</li>
+        <li>2026-06-12: 将 goal 首屏更新为更清晰的一眼架构总览：用五层链路直接展示 Example UI、Dart Service、Platform Store、Android Storage、Host Analysis 的职责流向，并在右侧突出当前架构判断、共享合同护栏和真实 Android evidence 关闭缺口。</li>
+        <li>2026-06-12: 同步 <code>LOCAL.md</code> 和本页下一步验收动作，补齐 host checkout 无法解析 git branch / commit 时的人工恢复路径：使用显式 <code>--branch &lt;branch&gt;</code> 和 <code>--commit &lt;commit&gt;</code> 重跑 evidence builder，再运行 evidence validator。</li>
+        <li>2026-06-12: 继续把 evidence 测试层收敛到共享合同源；<code>tool/build_android_report_evidence_test.py</code> 和 <code>tool/validate_android_report_evidence_test.py</code> 的正例 <code>App used</code>、模板占位和 host-app 参数改为引用 <code>tool/android_report_evidence_contract.py</code> 常量，降低测试样例与 builder / validator 合同漂移风险。</li>
+        <li>2026-06-12: 同步 TEST、GENERATION、README 和 diagnostics workflow 的 evidence contract 口径，明确安全 report 文件名 pattern 与 <code>App used</code> 枚举由 <code>tool/android_report_evidence_contract.py</code> 维护；builder 的非法 <code>App used</code> 错误提示也改为从同一枚举生成，减少后续合同扩展时的文案漂移。</li>
+        <li>2026-06-12: 将 goal 首屏收敛为“架构答案 + 三条泳道 + 五层职责地图”的展示方式，优先展示主架构、设备侧链路、主机侧链路、共享合同护栏和真机 evidence 缺口；同时把安全 report 文件名 pattern、<code>App used</code> 枚举和占位文本纳入 <code>tool/android_report_evidence_contract.py</code>，供 builder、validator 和模板回归测试共用。</li>
+        <li>2026-06-12: 继续收敛 evidence 字段标签合同；Run Context、App-Side Trigger、Host Outputs、Result 的字段标签与顺序、固定 app-side trigger 值和核心上下文字段集合已纳入 <code>tool/android_report_evidence_contract.py</code>，builder 生成、validator 校验和静态 evidence template 回归测试统一引用合同源。</li>
+        <li>2026-06-12: 继续收敛 branch / commit handoff 合同；<code>--branch</code> / <code>--commit</code> option 名称已纳入 <code>tool/android_report_evidence_contract.py</code>，builder、validator 和回归测试统一引用合同源；evidence builder 生成的 Host Commands Run 会显式携带当前 <code>--branch</code> / <code>--commit</code>，当时 validator 已要求显式参数成对并与 <code>## Run Context</code> 的 Branch / Commit 一致，随后已由更严格的 BREAKING CHANGE 收紧为必须显式携带；同步 evidence template、README、TEST、GENERATION 和 diagnostics workflow。</li>
+        <li>2026-06-12: 将 goal 首屏进一步改成架构蓝图视图，用设备侧运行链路、主机侧验收链路、共享合同护栏和右侧状态卡直接展示整体架构、当前判断、阶段边界和真机 evidence 缺口；原有详细架构判断收进折叠区。</li>
+        <li>2026-06-12: <strong>BREAKING CHANGE</strong>: 继续前移 evidence builder 的运行上下文校验；builder 现在拒绝空白或占位符 Date / Branch / Commit / App variant / Application id、非法 <code>App used</code>，并在无法从 git 解析 branch / commit 时要求显式传入 <code>--branch</code> / <code>--commit</code>，避免生成带 <code>&lt;branch&gt;</code> / <code>&lt;commit&gt;</code> 的不可关闭草稿。</li>
+        <li>2026-06-12: 继续收紧 evidence builder 输入边界；即使 CLI 已显式传入 <code>--application-id</code>，空白 application id 也会在 builder 阶段被拒绝，不再生成随后必然无法通过 validator 的 evidence 草稿。</li>
+        <li>2026-06-12: <strong>BREAKING CHANGE</strong>: 收紧 evidence builder CLI；<code>tool/build_android_report_evidence.py</code> 现在要求显式传入 <code>--application-id</code>，不再隐式使用 example app id，并已同步 README、TEST、GENERATION 和 diagnostics workflow 的人工执行说明。</li>
+        <li>2026-06-12: 增加 evidence builder 回归测试，锁定自定义 application id 必须同时进入 <code>## Run Context</code>、ADB list / pull host commands 和 builder <code>--application-id</code>，避免 host app 验收时命令仍退回默认 example application id。</li>
+        <li>2026-06-12: 修正 evidence validator 的 builder command 校验实现，确保 <code>tool/build_android_report_evidence.py --application-id</code> 真正与 <code>## Run Context</code> 的 application id 绑定；同步 sample PASS 链路和非 V1 拒绝验证记录。</li>
+        <li>2026-06-12: 按整体架构优先更新 goal 首屏；新增架构判断板和四段 focus strip，直接展示当前方向、合理性、最大风险、五层边界、合同护栏和下一步真机 evidence 缺口。</li>
         <li>2026-06-11: 创建 goal 文档。</li>
         <li>2026-06-11: 补齐 research、design、check、plan、problem，并切换为 active。</li>
-        <li>2026-06-11: 完成本地 Android report loop 骨架实现与非设备测试验证，保留 active 等待真机拉取证据。</li>
+        <li>2026-06-11: 完成本地 Android report loop 骨架实现与非设备测试验证，保留 active 等待真机 report、gate PASS 和 evidence validator PASS 证据。</li>
         <li>2026-06-11: 补齐 example Internal Tools 的 report 生成/列出/adb 命令入口，并让离线分析脚本识别 V1 performance report。</li>
+        <li>2026-06-11: 重排为架构可视化页面，突出架构层次、数据流、完成度、验收边界和下一步真机闭环。</li>
+        <li>2026-06-11: 将 report loop 架构主线同步到 README、docs 导航和 example 说明，避免维护入口继续围绕旧 upload probe 叙事。</li>
+        <li>2026-06-11: 明确 Android V1 report storage 的 retention policy：本阶段不自动清理，报告由 app 数据生命周期或人工验证动作清除。</li>
+        <li>2026-06-11: 为 <code>tool/analyze_diagnostics.py</code> 增加 <code>--android-report-gate</code>，让 Host Analysis 层能对真机回传 report 给出可脚本化 PASS / FAIL。</li>
+        <li>2026-06-11: 将 example 的 <code>Copy host commands</code> handoff 扩展为 adb 拉取 + analyzer gate 命令，减少真机验收时的手工拼接。</li>
+        <li>2026-06-11: 将 example UI 的复制入口从 <code>Copy adb command</code> 改为 <code>Copy host commands</code>，匹配当前 Host Analysis 层的命令范围。</li>
+        <li>2026-06-11: 增加 <code>tool/analyze_diagnostics_test.py</code>，让 analyzer gate 的 PASS / FAIL 语义可回归。</li>
+        <li>2026-06-11: 补齐 Android native thermal / low-power signals，并让 analyzer gate 要求 SDK、low-RAM classification、low-power mode、memory pressure，以及 SDK 29+ thermal 字段。</li>
+        <li>2026-06-11: 增加真机 report loop evidence template，固定设备信息、拉取命令、gate 输出和关键字段的验收记录格式。</li>
+        <li>2026-06-11: 补强 analyzer gate 测试，显式覆盖非 Android report、fallback decision 和 parse issue 失败路径。</li>
+        <li>2026-06-11: 同步 evidence template 的操作入口名称为 <code>Copy host commands</code>，避免真机验收记录继续引用旧按钮名。</li>
+        <li>2026-06-11: 禁用无 report 目标时的 <code>Copy host commands</code>，避免 <code>&lt;fileName&gt;</code> 占位符进入可复制 shell 命令。</li>
+        <li>2026-06-11: 将 <code>isLowRamDevice</code> 纳入 analyzer gate 必填字段，并明确 <code>mediaPerformanceClass</code> 是采集字段但不是跨设备必填项。</li>
+        <li>2026-06-11: 收紧 analyzer gate，拒绝混入 legacy AI diagnostics、decision-only 或 structured-log session 的验收输入。</li>
+        <li>2026-06-11: 将 example 内部 controller / widget 命名同步为 host commands，保留 report section 的 <code>adbCommands</code> 兼容别名。</li>
+        <li>2026-06-11: 增加 analyzer gate 的 sanity checks，拒绝 tier、confidence、runtime status、RAM、SDK、memory pressure 和 thermal 的异常值。</li>
+        <li>2026-06-11: 增加 analyzer gate 的 schema version 与 ISO-8601 date-time timestamp 校验，避免 malformed report 仅因字段存在而通过。</li>
+        <li>2026-06-11: 继续收紧 Host Analysis 层边界，要求顶层 <code>generatedAt</code> 是 UTC ISO-8601 timestamp，匹配 Dart <code>PerformanceReport</code> 的生成契约。</li>
+        <li>2026-06-11: 加固 example 复制出的 host commands，对 application id、设备侧 report 路径、主机 report 路径和 analyzer 输出目录统一 shell-quote，并按自定义输出文件自动生成 host 目录创建命令。</li>
+        <li>2026-06-11: 在 example host handoff 层复用 native 文件名安全边界，只为安全 <code>.json</code> report 文件名生成可复制命令，并跳过自定义 service 返回的异常文件名。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的 schema version 类型校验，要求原始 JSON 值必须是 integer <code>1</code>，拒绝字符串 <code>"1"</code> 或浮点值伪装通过。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的 metadata sequence 校验，要求 <code>metadata.reportSequence</code> 是正 JSON integer，并在 gate 摘要表中显示 sequence。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的 report identity 一致性校验，要求 <code>reportId</code> 匹配 <code>&lt;serviceSessionId&gt;-report-&lt;reportSequence&gt;</code>。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的多报告输入一致性校验，拒绝重复 <code>reportId</code> 或重复 service session / report sequence 组合，避免同一报告被重复当作验收证据。</li>
+        <li>2026-06-11: 继续收紧 analyzer gate 的 Android 数值信号类型校验，要求 RAM、SDK、memory pressure level 和 SDK 29+ thermal level 使用 JSON integer，拒绝字符串数字伪装通过。</li>
+        <li>2026-06-11: 继续收紧 analyzer gate 的 Android boolean 信号类型校验，要求 <code>isLowRamDevice</code> 和 <code>isLowPowerModeEnabled</code> 使用 JSON boolean，拒绝字符串布尔值伪装通过。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的身份字段类型校验，要求 report id、source、service session 和 device model 使用非空 JSON string，拒绝数字等非字符串值伪装通过。</li>
+        <li>2026-06-11: 继续收紧 analyzer gate 的身份字段内容校验，要求 report id、source、service session 和 device model 在 trim 后仍非空，拒绝空白字符串伪装通过。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的 wire 字段类型校验，要求 tier、confidence、runtime status、platform、memory pressure state 和 SDK 29+ thermal state 使用非空 JSON string，拒绝数字等非字符串值伪装通过。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的时间字段类型校验，要求顶层 <code>generatedAt</code> 和 <code>decision.decidedAt</code> 使用非空 JSON string，拒绝数字等非字符串值伪装通过。</li>
+        <li>2026-06-11: 收紧 analyzer gate 的时间一致性校验；当 report 与 decision timestamp 都带 timezone 时，拒绝 <code>generatedAt</code> 早于 <code>decision.decidedAt</code> 的报告。</li>
+        <li>2026-06-11: 强化 Host Analysis 的可见证据，<code>android_report_gate.md</code> 现在输出 report / decision 摘要表和 Android signal snapshot，便于真机验收时直接核对 report、session、device、OS version、SDK、tier、timestamp、RAM、power、memory pressure 和 thermal 字段。</li>
+        <li>2026-06-11: 强化 example host handoff，复制出的 host commands 现在会在 analyzer gate 后打印 <code>android_report_gate.md</code>，让 PASS / FAIL 和 summary tables 直接出现在人工验收终端。</li>
+        <li>2026-06-11: 加固 example host command 的 report 选择规则；如果没有刚写入的安全 report，则从 listed reports 中选择 <code>modifiedAt</code> 最新的安全 <code>.json</code>，避免无序自定义 service 返回旧报告。</li>
+        <li>2026-06-11: 加固 Platform Store 列表契约，Dart MethodChannel store 会按 <code>modifiedAt</code> 降序规范化 listed reports，缺失时间的报告排在后面。</li>
+        <li>2026-06-11: 加固 service report 测试，直接断言默认 service 生成的 <code>reportId</code> 匹配 <code>&lt;serviceSessionId&gt;-report-&lt;reportSequence&gt;</code>，让 Host Analysis gate 的身份规则有上游单元测试支撑。</li>
+        <li>2026-06-11: 收紧 <code>PerformanceReport</code> model 构造边界，拒绝空白 schema/report/source 身份字段和非正 schema version，避免明显无法通过 Host Analysis gate 的报告进入写入链路。</li>
+        <li>2026-06-11: 加固 Android native 写入契约测试，锁定非空 content、安全 <code>.json</code> 文件名、重名避让和 UTF-8 写入边界。</li>
+        <li>2026-06-11: 收紧 MethodChannel write result 契约，拒绝 native/store 返回与请求不同的非空 <code>reportId</code>，避免设备落盘成功后 Dart 侧身份被静默替换。</li>
+        <li>2026-06-11: 收紧 MethodChannel list result 契约，拒绝 native/store 返回的 malformed 非 map 列表项，避免平台数据结构错误被静默过滤成缺少报告。</li>
+        <li>2026-06-11: 继续收紧 MethodChannel list metadata 契约，拒绝非字符串 metadata key，避免平台字段名错误被静默丢弃后表现为缺字段。</li>
+        <li>2026-06-11: 加固 Host Analysis 目录输入边界，增加测试锁定 analyzer 会跳过位于输入树内的输出目录，避免本轮生成的 CSV / Markdown 被重复扫描为验收输入。</li>
+        <li>2026-06-11: 将 report identity 合同前移到 Dart model；当 report metadata 出现 service session 或 report sequence 时，<code>PerformanceReport</code> 构造阶段会要求两者完整并要求 <code>reportId</code> 匹配 <code>&lt;serviceSessionId&gt;-report-&lt;reportSequence&gt;</code>。</li>
+        <li>2026-06-11: 扩展真机 evidence template，增加 identity 三元组、重复 report、输入纯度和 timestamp gate 勾选项。</li>
+        <li>2026-06-11: 将 report timestamp 一致性合同前移到 Dart model；<code>PerformanceReport</code> 构造阶段会拒绝早于 <code>decision.decidedAt</code> 的 <code>generatedAt</code>，减少真机 gate 阶段才发现时间倒挂。</li>
+        <li>2026-06-11: 将 report schema 合同前移到 Dart model；<code>PerformanceReport</code> 构造阶段只接受当前 V1 <code>schemaName</code> / <code>schemaVersion</code>，减少非 V1 payload 写入后才被 Host Analysis gate 拒绝。</li>
+        <li>2026-06-11: 将 service report id 生成规则集中到 <code>PerformanceReport.buildServiceReportId()</code>，默认 service 和 model metadata 校验共用同一入口，减少 identity 规则漂移。</li>
+        <li>2026-06-11: 将五层 report loop 架构和 readiness 边界补回 <code>SPEC.md</code>，并为公开 service / store / report identity API 增加契约注释，减少自定义实现方偏离目标架构的风险。</li>
+        <li>2026-06-11: 收紧 native report metadata 解析边界，要求 <code>fileName</code> / <code>relativePath</code> 为非空字符串、<code>bytes</code> 为正 integer，拒绝空白路径、0 bytes 和字符串数字，避免 Host Analysis 入口拿到不可用的拉取目标。</li>
+        <li>2026-06-11: 加固 example host commands，命令块现在以 <code>set -e</code> 开头，并在 analyzer gate 前执行 <code>test -s</code> 检查拉回 JSON 非空；analyzer FAIL 时会先打印 <code>android_report_gate.md</code>，再用保存的 gate 退出码让命令失败，减少 adb 拉取失败后继续分析空文件或 FAIL 原因不可见的风险。</li>
+        <li>2026-06-11: 强化 Host Analysis 证据可复制性，<code>android_report_gate.md</code> 现在输出 <code>Gate Summary</code> 代码块，直接列出 status、issueCount、filesScanned、performanceReportRows、sessionRows 和 parseIssues。</li>
+        <li>2026-06-11: 继续强化 Host Analysis 证据可复制性，<code>android_report_gate.md</code> 现在直接输出 Report Field Check 和 Identity Checklist，减少真机验收时从 JSON 手工抄字段的风险。</li>
+        <li>2026-06-11: 增加 <code>tool/build_android_report_evidence.py</code>，可从拉回 report 和 gate Markdown 生成 goal evidence 草稿，再交给 evidence validator 做 PASS / FAIL 校验。</li>
+        <li>2026-06-11: 将 <code>osVersion</code> 纳入 <code>DeviceSignals</code> / report / analyzer gate，并把 example host commands 串到 evidence draft builder 和 validator，减少真机验收后的手工收口步骤。</li>
+        <li>2026-06-11: 加固 Android Storage 层写入边界，native <code>writePerformanceReport</code> 现在拒绝非当前 V1 <code>schemaVersion</code> 和空白 <code>reportId</code>，避免直接 MethodChannel 调用绕过 Dart model 后写入无法通过 Host Analysis gate 的报告。</li>
+        <li>2026-06-11: 加固 Android Storage 层列表边界，native <code>listPerformanceReports</code> 现在复用写入侧安全 <code>.json</code> 文件名规则，避免手工或历史残留的异常 JSON 文件名进入 host-pull 候选列表。</li>
+        <li>2026-06-11: 增加 <code>tool/validate_android_report_evidence.py</code>，让填回的真机 evidence markdown 也有本地 PASS / FAIL 校验，防止空模板、FAIL gate summary 或不安全 report 文件名被当成 readiness 证据。</li>
+        <li>2026-06-11: 将本页重心进一步调整为整体架构视图，首屏突出设备内链路、主机验收链路、schema / identity / signal / time 合同和仍缺的真机证据。</li>
+        <li>2026-06-11: 对齐 evidence builder、evidence template 和 validator；生成的 evidence 现在记录完整 copied host command 链路，validator 也会拒绝缺少 builder / validator 步骤的 analyzer-only 旧证据、仍带 <code>&lt;fileName&gt;</code> / <code>&lt;applicationId&gt;</code> 等占位符的不可执行命令块、命令引用的 application id / report 文件名 / 拉回路径 / analyzer 输出目录与 evidence 上下文不一致的证据、builder 输出 evidence 与 validator 输入 evidence 不一致的证据、拉回路径 basename 与 report 文件名不一致的证据、多 report evidence、Android Report Gate 顶部 status block 与 Gate Summary 不一致的证据、Gate Summary row count 与 Performance Reports / Android Signals 表格行数不一致的证据、Performance Reports 表与 Report Field Check 的 report identity / service session / decision / runtime / timestamp 不一致的证据、Android Signals 表与 Report Field Check 的 report id / platform / device / OS version / SDK / RAM / low-RAM / low-power / memory pressure / thermal 字段不一致的证据、Report Field Check 的 schema / platform / device model / Android version / SDK 与运行上下文不一致的证据，以及缺少 app variant 或最终 Pass / none 结果的 evidence。</li>
+        <li>2026-06-11: 修正真机 evidence template 的 Android Signals 表结构，补回 <code>OS Version</code> 列，保持人工填写模板与当前 analyzer gate 输出一致。</li>
+        <li>2026-06-11: 收紧 evidence builder 生成草稿的架构语义，草稿现在直接声明 readiness evidence 只绑定当前选中的 report 文件，validator 只接受单个安全 <code>.json</code> report，不接受目录级或多 report batch。</li>
+        <li>2026-06-11: 收紧 evidence validator 的运行上下文约束，<code>App used</code> 现在必须明确为 <code>example app</code> 或 <code>host app</code>；同步 evidence template，提示 PASS evidence 的 failure category 必须填写 <code>none</code>。</li>
+        <li>2026-06-11: 收紧 evidence validator 的 host command 上下文匹配，application id、拉回路径和 analyzer 输出目录现在按 shell token 精确匹配，避免上下文字段只是实际命令值的前缀时误通过。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 adb 命令结构校验，<code>adb shell run-as</code> 和 <code>adb exec-out run-as</code> 必须使用 evidence 记录的 application id，pull 命令必须读取 <code>files/performance_tier_reports/&lt;Report file name&gt;</code>。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的脚本命令结构校验，analyzer 必须实际分析 evidence 记录的拉回 report、输出到记录的 analysis 目录并携带 <code>--android-report-gate</code>，evidence builder 必须读取同一 report 和同一 analysis 目录。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 host 文件检查校验，<code>test -s</code> 必须检查 evidence 记录的拉回 report，<code>cat</code> 必须打印记录的 analyzer 输出目录下的 <code>android_report_gate.md</code>。</li>
+        <li>2026-06-11: 在首屏增加“一屏架构”总览，把设备内链路、主机验收链路、合同护栏、当前判断、本阶段不做和关闭缺口集中展示，方便直接评估整体方向。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 host command 顺序校验，命令块必须按开启 fail-fast、列出 report 目录、准备主机目录、拉回 report、非空检查、允许 analyzer gate 失败状态捕获、analyzer gate、捕获 gate status、恢复 fail-fast、打印 gate Markdown、检查 gate 状态、生成 evidence、校验 evidence 的顺序执行。</li>
+        <li>2026-06-11: 将 host command 顺序要求同步到 README、example README、LOCAL 和 diagnostics analysis workflow，避免人工真机验收时只按“包含命令”理解而重排命令块。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 App-Side Trigger 校验，填回证据必须记录 <code>Internal Tools</code> 的 Generate report、List reports、Copy host commands 和 <code>files/performance_tier_reports/</code> 目录。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Performance Reports Source 校验，summary table 的 Source 必须匹配本次拉回 report 路径和选中的 report 文件名。</li>
+        <li>2026-06-11: 将 goal 首屏调整为架构优先导读，默认隐藏完整验收细节，并强调 ready / done evidence 必须绑定单个安全 report 且 Report Field Check 只允许一个与当前 <code>reportId</code> 一致的标题。</li>
+        <li>2026-06-11: 将 Report Field Check 单 report 标题约束同步到 <code>README.md</code>、<code>TEST.md</code>、diagnostics workflow 和 evidence template，确保架构事实源、人工验收说明与 validator 行为一致。</li>
+        <li>2026-06-11: 加固 analyzer / evidence builder 回归保护；analyzer gate 测试现在锁定 Report Field Check 的当前 <code>reportId</code> 标题，evidence builder 草稿也提示人工保留唯一当前 report 标题。</li>
+        <li>2026-06-11: 收紧 evidence builder 输入边界；builder 现在只接受顶层单个当前 V1 report JSON object，拒绝 JSON array / batch report、非当前 schema object 和不可读取的 gate Markdown，避免错误输入被误用为 ready evidence draft。</li>
+        <li>2026-06-11: 继续收紧 evidence builder / gate 绑定；builder 现在要求 <code>android_report_gate.md</code> 是同一 report 的单 report PASS gate，拒绝 stale gate 和 multi-report gate 生成 ready-looking 草稿。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Source 校验；builder 现在会拒绝 Performance Reports Source 不匹配本次 report 路径和文件名的 gate Markdown。</li>
+        <li>2026-06-11: 在首屏增加“架构驾驶舱”，用主线、状态、关闭条件、边界、合同和缺口直接展示整体架构判断，让 goal 默认从架构视角阅读。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的安全文件名边界；builder 现在直接拒绝 unsafe report 文件名，不再生成只能由 validator 后续拒绝的草稿。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 gate header 校验；builder 现在要求 <code>android_report_gate.md</code> 顶部 status block 与 Gate Summary 同为单 report PASS。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Performance Reports 表字段校验；builder 现在要求 source tag、session、sequence、tier、confidence、runtime 和 timestamp 与当前 report JSON 一致。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Android Signals 表字段校验；builder 现在要求 report id、platform、device、OS version、SDK、RAM、low-RAM、low-power、memory pressure 和 thermal 与当前 report JSON 一致。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Report Field Check 字段校验；builder 现在要求 schema、identity、decision、Android signal 和 runtime 字段逐项匹配当前 report JSON。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Identity And Gate Checklist 校验；builder 现在要求所有 identity / timestamp / input purity 勾选项均为 yes。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Issues section 校验；builder 现在要求 PASS gate 的 <code>## Issues</code> 只能包含 <code>- None.</code>。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Checks section 校验；builder 现在要求 <code>android_report_gate.md</code> 保留 analyzer gate 输出的完整 <code>## Checks</code> 清单。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 report payload 基线校验；builder 现在拒绝缺少 source、generatedAt、service session、正整数 sequence、匹配 reportId 或 decision timestamp 的 report JSON。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的 Android signal / runtime payload 校验；builder 现在拒绝缺失 tier、confidence、runtime status 或当前 Android gate 必需信号的 report JSON。</li>
+        <li>2026-06-11: 继续前移 evidence builder 的时间合同校验；builder 现在拒绝非 UTC <code>generatedAt</code>、date-only <code>decision.decidedAt</code> 和 <code>generatedAt</code> 早于 <code>decision.decidedAt</code> 的 report JSON。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Issues section 校验；填回的 readiness evidence 现在必须包含 <code>## Issues</code>，且只能是 <code>- None.</code>。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Checks section 校验；填回的 readiness evidence 现在必须保留 analyzer gate 输出的完整 <code>## Checks</code> 清单。</li>
+        <li>2026-06-11: 提取 <code>tool/android_report_gate_contract.py</code> 作为 Host Analysis 合同源，避免 analyzer、evidence builder 和 evidence validator 的 schema / Checks / Identity Checklist 文案各自漂移。</li>
+        <li>2026-06-11: 增加 evidence template 合同回归测试，确保静态人工验收模板的 <code>## Checks</code> 和 Identity Checklist 与 <code>tool/android_report_gate_contract.py</code> 保持一致。</li>
+        <li>2026-06-11: 继续收敛 Host Analysis 合同源，gate section headings、PASS gate 空 Issues 文本和 evidence template 的 gate section 顺序现在也由 <code>tool/android_report_gate_contract.py</code> 与回归测试保护。</li>
+        <li>2026-06-11: 收紧 evidence validator 的 Identity Checklist 作用域校验；checklist 标签必须位于 <code>## Identity And Gate Checklist</code> section 内，不能散落在其他位置后仍被当作有效证据。</li>
+        <li>2026-06-11: 继续收敛 Host Analysis 合同源，Performance Reports / Android Signals 表头和 Report Field Check 标签现在也由 <code>tool/android_report_gate_contract.py</code> 驱动，并由 analyzer / evidence template 回归测试覆盖。</li>
+        <li>2026-06-11: 将首屏五层 ribbon 改为架构地图，按 Layer / Input / Output / Guardrail / Evidence Gap 展示整体架构，让读者先判断边界和关闭缺口，再展开验收细节。</li>
+        <li>2026-06-11: 继续收敛 Host Analysis 合同源，Gate Summary keys、顶部 status block 标签、PASS / FAIL 状态值和单 report PASS 期望现在也由 <code>tool/android_report_gate_contract.py</code> 驱动，并由 analyzer Markdown / CLI 输出测试和 evidence template 的 Gate Summary key / 顶部 status block label 顺序回归测试保护。</li>
+        <li>2026-06-11: 提取 <code>tool/android_report_evidence_contract.py</code>，让 evidence draft / validator 的输出 marker、<code>## Result</code> 标签、Pass/fail 结果和 failure category 文本由同一合同源驱动，并由静态 evidence template 回归测试保护。</li>
+        <li>2026-06-11: 继续扩展 <code>tool/android_report_evidence_contract.py</code> 的架构职责，Host Commands section 标题、必含命令片段、脚本路径、gate status 检查命令和 host command 阶段顺序现在也由同一 evidence 合同源维护。</li>
+        <li>2026-06-11: 将 host handoff 合同进一步落到回归测试；evidence required snippets 现在包含 analyzer 脚本路径，builder 生成草稿和静态 evidence template 都会展示同一 host command 顺序文本，并由 Python 测试锁定。</li>
+        <li>2026-06-11: 继续收紧 host handoff 执行语义；evidence validator 现在要求 copied commands 包含主机目录准备、gate status 捕获和恢复 fail-fast 阶段，缺失任一阶段都会被视为不可关闭证据。</li>
+        <li>2026-06-11: 对齐 Dart example 与 Python evidence validator 的主机目录准备合同；example 现在即使输出到当前目录也会复制 <code>mkdir -p .</code>，并由 controller 测试锁定完整 host command 阶段顺序。</li>
+        <li>2026-06-11: 继续收紧 host command 白名单；evidence validator 现在会拒绝合同阶段之外的额外命令，避免人工 evidence 夹带未审计 shell 步骤后仍被判定可关闭。</li>
+        <li>2026-06-11: 在 goal 首屏新增“架构优先视图”，用 runtime、storage、host gate、evidence 四段主线和当前判断 / 核心合同 / 关闭缺口三块摘要，让页面默认从整体架构而不是验收细节开始阅读。</li>
+        <li>2026-06-11: 继续收紧 ADB handoff 结构；evidence validator 现在要求 list 命令精确列出 <code>files/performance_tier_reports</code>，pull 命令精确读取选中 report 并用 stdout 重定向到记录的拉回路径，同时把设备 report 目录纳入 <code>tool/android_report_evidence_contract.py</code> 合同源。</li>
+        <li>2026-06-11: 继续收紧 host command 可执行性；evidence validator 现在会拒绝 shell token 解析失败的命令行，避免坏掉的引号或半截命令被当成可审计 handoff。</li>
+        <li>2026-06-11: 继续收紧 Python host command 结构；evidence validator 现在要求 analyzer、evidence builder 和 evidence validator 命令精确匹配预期 argv，拒绝夹带额外输入或额外 flag 的 evidence。</li>
+        <li>2026-06-11: 继续收紧 Host Commands section 格式；evidence validator 现在要求命令块保留为单个 <code>bash</code> fenced code block，避免裸贴命令或混杂说明文字后仍被当成可复制 handoff。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Result section 作用域；<code>Pass / fail</code> 和 failure category 必须位于 <code>## Result</code> section 内，散落在 Host Outputs 等其他 section 的同名字段不再计入 readiness evidence。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 evidence section 作用域；<code>Run Context</code>、<code>App-Side Trigger</code> 和 <code>Host Outputs</code> 字段现在也必须位于各自 section 内，散落在其他 section 的同名字段不再计入 readiness evidence。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Report Field Check 作用域；schema、identity、decision、Android signal 和 runtime 字段必须位于 <code>## Report Field Check</code> section 内，散落在其他 section 的同名字段不再计入 readiness evidence。</li>
+        <li>2026-06-11: 继续收紧 evidence validator 的 Android Report Gate 顶部状态块作用域；<code>Status</code>、files scanned、row count 和 parse issue 字段必须位于 <code># Android Report Gate</code> 顶部区域，散落在其他 section 的同名字段不再计入 readiness evidence。</li>
+        <li>2026-06-11: 在 goal 首屏新增“整体架构总图”，把设备侧运行链路、主机侧验收链路、合同护栏、当前 active 状态、本阶段不扩展范围和关闭门槛放在同一块可视区域，便于先从整体架构判断方向是否合理。</li>
+        <li>2026-06-11: 继续收紧 Gate Summary 合同；analyzer、evidence template、evidence builder 和 evidence validator 现在共享单个 <code>text</code> fenced key-value block、字段集和字段顺序要求，裸散、额外、重复或重排的 <code>key=value</code> 行不再计入 readiness evidence。</li>
+        <li>2026-06-11: 继续收紧 Android Report Gate 顶部 status block 合同；evidence builder 和 validator 现在要求顶部字段集与字段顺序精确匹配共享合同，额外、重复或重排的 status block 字段不再计入 readiness evidence。</li>
+        <li>2026-06-12: 将 goal 默认展示收敛为架构总图、五层地图和状态四宫格，并把重复的架构展示折叠为备用视图，让页面首先呈现整体架构边界、合同护栏和真机证据缺口。</li>
+        <li>2026-06-12: 继续收紧 Report Field Check 合同；evidence builder 和 validator 现在要求字段集与字段顺序精确匹配共享合同，额外、重复或重排的字段行不再计入 readiness evidence。</li>
+        <li>2026-06-12: 继续收紧 summary table 合同；evidence builder 和 validator 现在要求 Performance Reports 与 Android Signals 表头字段集和列顺序精确匹配共享合同，额外、重复或重排的列不再计入 readiness evidence。</li>
+        <li>2026-06-12: 继续收紧 Identity And Gate Checklist 合同；evidence builder 和 validator 现在要求 checklist 标签集合与顺序精确匹配共享合同，额外、重复或重排的 checklist 行不再计入 readiness evidence。</li>
+        <li>2026-06-12: 同步 README 和 TEST 中的 host handoff 说明，人工验收文档现在使用完整 evidence-contract 顺序：fail-fast、列目录、准备主机目录、拉回 report、非空检查、允许 gate failure capture、analyzer gate、捕获 gate status、恢复 fail-fast、打印 gate Markdown、检查 gate status、生成 evidence、校验 evidence。</li>
+        <li>2026-06-12: 同步 LOCAL 和本页下一步验收动作，明确 copied host commands 会 quote evidence 输出路径，且人工执行时必须保留完整 handoff 顺序，不把 adb 拉取、gate 和 evidence 步骤压缩成旧版简写。</li>
+        <li>2026-06-12: 同步 SPEC 和 PACKAGING 的 ready / artifact 边界；现在 package 消费、发布稳定性或 Android monitoring artifact ready 判断都必须等待真实设备 report、单 report gate PASS 和 <code>android_report_evidence_status=PASS</code>。</li>
+        <li>2026-06-12: 同步 TEST、README、docs 导航和 example README 的 ready 口径，入口文档不再使用弱化的 ready 标准，统一要求真机 report、Android report gate PASS 和 evidence validator PASS。</li>
+        <li>2026-06-12: 同步 GENERATION 的 evidence draft 生成边界，生成文件事实源现在明确 validator 要求完整 copied host command 顺序、gate contract、summary / field / checklist 结构、单 report scope 和 PASS Result。</li>
+        <li>2026-06-12: 同步 GENERATION、LOCAL、SPEC 和本页关联文档入口的 evidence 口径，生成命令示例统一使用 <code>python3</code>，旧的 pull-only 表述统一收敛为 report gate / evidence 要求。</li>
+        <li>2026-06-12: 同步 diagnostics analysis workflow 的 host-side 示例命令，Windows 路径示例也统一使用 <code>python3</code>，避免执行文档与 goal 的生成命令口径漂移。</li>
+        <li>2026-06-12: 收紧 evidence builder handoff 合同；复制出的 host commands、evidence template、builder 生成草稿和 validator 现在都要求 <code>tool/build_android_report_evidence.py</code> 显式携带与运行上下文一致的 <code>--application-id</code>。</li>
       </ul>
+      </details>
     </section>
   </main>
 </body>

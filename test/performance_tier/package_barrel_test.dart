@@ -17,6 +17,7 @@ void main() {
           platform: 'android',
           collectedAt: DateTime(2026),
         ),
+        decidedAt: DateTime.utc(2026, 6, 11),
       ),
       generatedAt: DateTime.utc(2026, 6, 11),
       reportId: 'barrel-test',

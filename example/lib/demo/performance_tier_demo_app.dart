@@ -116,11 +116,14 @@ class _PerformanceTierDemoPageState extends State<PerformanceTierDemoPage> {
               lastReportWriteResult: _controller.lastReportWriteResult,
               androidReportFiles: _controller.androidReportFiles,
               androidReportError: _controller.androidReportError,
-              androidReportCommands: _controller.buildAndroidReportCommands(),
+              androidReportHostCommands: _controller
+                  .buildAndroidReportHostCommands(),
+              canCopyAndroidReportHostCommands:
+                  _controller.canCopyAndroidReportHostCommands,
               onWriteAndroidReport: _controller.writeAndroidReport,
               onListAndroidReports: _controller.listAndroidReports,
-              onCopyAndroidReportCommands: () =>
-                  _controller.copyAndroidReportCommands(context),
+              onCopyAndroidReportHostCommands: () =>
+                  _controller.copyAndroidReportHostCommands(context),
               uploadProbeController:
                   _internalToolsController.uploadProbeController,
               onRunUploadProbe: _runUploadProbe,
@@ -191,6 +194,7 @@ class _DecisionSignalsSection extends StatelessWidget {
       rows: <String>[
         'platform: ${signals?.platform ?? '-'}',
         'deviceModel: ${signals?.deviceModel ?? '-'}',
+        'osVersion: ${signals?.osVersion ?? '-'}',
         'totalRamBytes: ${signals?.totalRamBytes ?? '-'}',
         'memoryPressureState: ${signals?.memoryPressureState ?? '-'}',
         'thermalState: ${signals?.thermalState ?? '-'}',
@@ -261,10 +265,11 @@ class _InternalToolsSection extends StatelessWidget {
     required this.lastReportWriteResult,
     required this.androidReportFiles,
     required this.androidReportError,
-    required this.androidReportCommands,
+    required this.androidReportHostCommands,
+    required this.canCopyAndroidReportHostCommands,
     required this.onWriteAndroidReport,
     required this.onListAndroidReports,
-    required this.onCopyAndroidReportCommands,
+    required this.onCopyAndroidReportHostCommands,
     required this.uploadProbeController,
     required this.onRunUploadProbe,
     required this.onClearAuthSession,
@@ -279,10 +284,11 @@ class _InternalToolsSection extends StatelessWidget {
   final PerformanceReportWriteResult? lastReportWriteResult;
   final List<PerformanceReportFile> androidReportFiles;
   final String? androidReportError;
-  final String androidReportCommands;
+  final String androidReportHostCommands;
+  final bool canCopyAndroidReportHostCommands;
   final Future<void> Function() onWriteAndroidReport;
   final Future<void> Function() onListAndroidReports;
-  final Future<void> Function() onCopyAndroidReportCommands;
+  final Future<void> Function() onCopyAndroidReportHostCommands;
   final PerformanceTierUploadProbeController uploadProbeController;
   final Future<void> Function() onRunUploadProbe;
   final Future<void> Function() onClearAuthSession;
@@ -315,16 +321,17 @@ class _InternalToolsSection extends StatelessWidget {
           _AndroidReportActions(
             writingReport: writingAndroidReport,
             listingReports: listingAndroidReports,
+            canCopyCommands: canCopyAndroidReportHostCommands,
             onWriteReport: onWriteAndroidReport,
             onListReports: onListAndroidReports,
-            onCopyCommands: onCopyAndroidReportCommands,
+            onCopyCommands: onCopyAndroidReportHostCommands,
           ),
           const SizedBox(height: 8),
           _AndroidReportPanel(
             lastWriteResult: lastReportWriteResult,
             files: androidReportFiles,
             error: androidReportError,
-            adbCommands: androidReportCommands,
+            hostCommands: androidReportHostCommands,
           ),
           const SizedBox(height: 8),
           if (supportsRuntimeSignalPresets)
@@ -350,6 +357,7 @@ class _AndroidReportActions extends StatelessWidget {
   const _AndroidReportActions({
     required this.writingReport,
     required this.listingReports,
+    required this.canCopyCommands,
     required this.onWriteReport,
     required this.onListReports,
     required this.onCopyCommands,
@@ -357,6 +365,7 @@ class _AndroidReportActions extends StatelessWidget {
 
   final bool writingReport;
   final bool listingReports;
+  final bool canCopyCommands;
   final Future<void> Function() onWriteReport;
   final Future<void> Function() onListReports;
   final Future<void> Function() onCopyCommands;
@@ -388,9 +397,11 @@ class _AndroidReportActions extends StatelessWidget {
           label: Text(listingReports ? 'Listing...' : 'List reports'),
         ),
         OutlinedButton.icon(
-          onPressed: onCopyCommands,
+          onPressed: canCopyCommands && !writingReport && !listingReports
+              ? onCopyCommands
+              : null,
           icon: const Icon(Icons.copy),
-          label: const Text('Copy adb command'),
+          label: const Text('Copy host commands'),
         ),
       ],
     );
@@ -402,13 +413,13 @@ class _AndroidReportPanel extends StatelessWidget {
     required this.lastWriteResult,
     required this.files,
     required this.error,
-    required this.adbCommands,
+    required this.hostCommands,
   });
 
   final PerformanceReportWriteResult? lastWriteResult;
   final List<PerformanceReportFile> files;
   final String? error;
-  final String adbCommands;
+  final String hostCommands;
 
   @override
   Widget build(BuildContext context) {
@@ -444,10 +455,10 @@ class _AndroidReportPanel extends StatelessWidget {
             Text('relativePath: ${latest?.relativePath ?? '-'}'),
             Text('bytes: ${latest?.bytes ?? '-'}'),
             const SizedBox(height: 8),
-            Text('adb commands', style: theme.textTheme.titleSmall),
+            Text('host commands', style: theme.textTheme.titleSmall),
             const SizedBox(height: 4),
             SelectableText(
-              adbCommands,
+              hostCommands,
               style: const TextStyle(fontFamily: 'monospace'),
             ),
             const SizedBox(height: 8),
